@@ -1,7 +1,7 @@
 ![Logo](https://github.com/ashwin153/beaker/blob/master/beaker-assets/images/banner.png)
 ---
 [![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][5]
-[![Docker](https://img.shields.io/docker/automated/ashwin153/beaker.svg)][6]
+[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][6]
 
 Beaker is a distributed, transactional key-value store that is consistent and available. Beaker uses a 
 leader-less variation of [Generalized Paxos][1] to consistently execute transactions. Beaker permits 
@@ -64,30 +64,30 @@ The proof of correctness relies on the assumption of *connectivity*, beakers are
 all of their non-faulty peers, and the fact of *quorum intersection*, any majority of beakers will 
 contain at least one beaker in common.
 
-__Liveness.__ An accepted proposal ```A``` will eventually be learned. __Proof.__ By quorum 
+__Liveness.__ An accepted proposal ```A``` will eventually be learned. __Proof.__ By quorum
 intersection, at least one promise will contain ```A```. Therefore, ```A``` must be proposed enough
 beakers learn ```A``` such that ```A``` is no longer accepted by a majority. By assumption of
 connectivity, if any beaker learns a proposal then all beakers will eventually learn it.
 
-__Linearizability.__ If a proposal ```A``` is accepted, then any conflicting proposal ```B``` that 
-is accepted after ```A``` will be learned after ```A```. __Proof.__ Because ```A``` was accepted 
-before ```B```, the majority that accepted ```A``` before ```B``` will vote for ```A``` before 
+__Linearizability.__ If a proposal ```A``` is accepted, then any conflicting proposal ```B``` that
+is accepted after ```A``` will be learned after ```A```. __Proof.__ Because ```A``` was accepted
+before ```B```, the majority that accepted ```A``` before ```B``` will vote for ```A``` before
 ```B```. Because messages are delivered in order, ```A``` will be learned before ```B```.
 
 __Commutativity.__ Let ```R``` denote the repairs for an accepted proposal ```A```. Any accepted
-proposal ```B``` that conflicts with ```A + R``` but not ```A``` commutes with ```A + R```. 
-__Proof.__ Because ```B``` conflicts with ```A + R``` but not ```A```, ```B``` must read a key 
-```k``` that is read by ```A```. Because ```B``` is accepted, it must read the latest version of 
-```k```. (Linearizability) Suppose that ```B``` is committed first. Because ```B``` reads and does 
-not write ```k```, ```A + R``` can still be committed. Suppose that ```A + R``` is committed first. 
-Because ```A + R``` writes the latest version of ```k``` and ```B``` reads the latest version, 
-```B``` can still be committed.
+proposal ```B``` that conflicts with ```A + R``` but not ```A``` commutes with ```A + R```.
+__Proof.__ Because ```B``` conflicts with ```A + R``` but not ```A```, ```B``` must read a key
+```k``` that is read by ```A```. By linearizability, ```B``` must read the latest version of
+```k``` because ```B``` is accepted. Suppose that ```B``` is committed first. Because ```B``` reads 
+and does not write ```k```, ```A + R``` can still be committed. Suppose that ```A + R``` is 
+committed first. Because ```A + R``` writes the latest version of ```k``` and ```B``` reads the 
+latest version, ```B``` can still be committed.
 
-__Consistency.__ If a proposal ```A``` is accepted, it can be committed. __Proof.__ Suppose there 
-exists a transaction that cannot be committed. Then, the transaction must read a key for which there 
-exists a newer version. This implies that there exists a proposal ```B``` that was accepted after 
-but learned before ```A``` that changes a key ```k``` that is read by ```A```. But ```B``` cannot 
-conflict with ```A```. (Linearizability) Therefore, ```B``` must repair ```k```. By commutativity,
+__Consistency.__ If a proposal ```A``` is accepted, it can be committed. __Proof.__ Suppose there
+exists a transaction that cannot be committed. Then, the transaction must read a key for which there
+exists a newer version. This implies that there exists a proposal ```B``` that was accepted after
+but learned before ```A``` that changes a key ```k``` that is read by ```A```. By linearizability,
+ ```B``` cannot conflict with ```A```. Therefore, ```B``` must repair ```k```. By commutativity,
 ```A``` may still be committed.
 
 ## Reconfiguration
