@@ -1,4 +1,4 @@
-![Logo](https://github.com/ashwin153/caustic/blob/master/caustic-assets/images/banner.png)
+![Logo](https://github.com/ashwin153/beaker/blob/master/beaker-assets/images/banner.png)
 ---
 [![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][5]
 [![Docker](https://img.shields.io/docker/automated/ashwin153/beaker.svg)][6]
