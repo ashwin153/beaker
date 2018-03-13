@@ -1,17 +1,15 @@
 ![Logo](https://github.com/ashwin153/caustic/blob/master/caustic-assets/images/banner.png)
 ---
-[![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][3]
-[![Maven Central](https://img.shields.io/maven-central/v/com.madavan/beaker-core_2.12.svg)][2]
-[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][4]
+[![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][5]
+[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][6]
 
-# Beaker
 Beaker is a distributed, transactional key-value store that is consistent and available. Beaker uses a 
 leader-less variation of [Generalized Paxos][1] to consistently execute transactions. Beaker permits 
 a minority of failures and hence it is ```N / 2``` fault tolerant. Beaker assumes that failures are 
 fail-stop. It makes no assumptions about the underlying network except that messages are received in 
 the order they were sent. Most networking protocols, including [TCP][4], satisfy this requirement.
 
-## Introduction
+## Background
 A __database__ is a transactional key-value store. Databases map keys to versioned values, called
 __revisions__. Revisions are uniquely identified and totally ordered by their version. A 
 __transaction__ depends on the versions of a set of keys, called its *readset*, and changes the
@@ -120,3 +118,5 @@ approach consumes just ```D * N / 2``` in bandwidth and permits concurrent propo
 [2]: https://en.wikipedia.org/wiki/Consensus_(computer_science)
 [3]: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 [4]: https://en.wikipedia.org/wiki/Transmission_Control_Protocol
+[5]: https://travis-ci.org/ashwin153/beaker
+[6]: https://hub.docker.com/r/ashwin153/beaker/
