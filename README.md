@@ -1,7 +1,7 @@
 ![Logo](https://github.com/ashwin153/caustic/blob/master/caustic-assets/images/banner.png)
 ---
 [![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][5]
-[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][6]
+[![Docker](https://img.shields.io/docker/automated/ashwin153/beaker.svg)][6]
 
 Beaker is a distributed, transactional key-value store that is consistent and available. Beaker uses a 
 leader-less variation of [Generalized Paxos][1] to consistently execute transactions. Beaker permits 
