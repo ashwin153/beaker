@@ -3,6 +3,7 @@ scala_library(
     sources=rglobs('*.scala'),
     dependencies=[
         'beaker-cluster/src/main/scala',
+        'beaker-common/src/main/scala',
         'beaker-core/src/main/thrift',
         '3rdparty/jvm:c3p0',
         '3rdparty/jvm:caffeine',
