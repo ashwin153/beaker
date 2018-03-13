@@ -3,12 +3,6 @@ jar_library(name='ammonite', jars=[
     jar(org='com.lihaoyi', name='ammonite_2.12.1', rev='1.0.2'),
 ])
 
-# ANTLR
-jar_library(name='antlr', jars=[
-    jar(org='org.antlr', name='antlr4', rev='4.7'),
-    jar(org='org.antlr', name='antlr4-runtime', rev='4.7'),
-])
-
 # C3P0
 jar_library(name='c3p0', jars=[
     jar(org='c3p0', name='c3p0', rev='0.9.1.2')
@@ -96,19 +90,9 @@ jar_library(name='scalatest', dependencies=[':scala-library', ':scala-reflect'],
     jar(org='org.scalatest', name='scalatest_2.12', rev='3.0.0', excludes=[exclude('org.scala-lang')]),
 ])
 
-# Shapeless
-jar_library(name='shapeless', jars=[
-    jar(org='com.chuusai', name='shapeless_2.12', rev='2.3.2'),
-])
-
 # SLF4J
 jar_library(name='slf4j-simple', jars=[
     jar(org='org.slf4j', name='slf4j-simple', rev='1.7.25'),
-])
-
-# Spray JSON
-jar_library(name='spray-json', jars=[
-    jar(org='io.spray', name='spray-json_2.12', rev='1.3.3'),
 ])
 
 # Thrift

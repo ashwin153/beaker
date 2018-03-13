@@ -1,0 +1,30 @@
+####################################################################################################
+#                                          .dockerignore                                           #
+####################################################################################################
+# macOS
+.DS_Store
+
+# IntelliJ
+.idea/
+*.iml
+
+# Git
+.git
+.gitignore
+
+# Pants
+.cache
+dist
+.pants.d
+.pants.workdir.file_lock
+.pids
+
+# Generated
+target/
+
+# Miscellaneous
+caustic-assets
+LICENSE
+README.md
+release.sh
+.travis.yml
