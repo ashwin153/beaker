@@ -2,7 +2,7 @@ package beaker.core
 package storage
 
 import beaker.core
-import core.beaker.thrift.Revision
+import beaker.core.thrift._
 
 import com.github.benmanes.caffeine.{cache => caffeine}
 
