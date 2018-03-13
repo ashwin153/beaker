@@ -1,7 +1,7 @@
 #!/bin/bash
 ####################################################################################################
 #                               Declare Build Targets and Artifacts                                #
-#                        https://github.com/ashwin153/caustic/wiki/Release                         #
+#                        https://github.com/ashwin153/beaker/wiki/Release                          #
 ####################################################################################################
 targets=(
   "beaker-cluster/src/main/scala"
