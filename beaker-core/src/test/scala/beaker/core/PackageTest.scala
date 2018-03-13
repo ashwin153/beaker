@@ -1,7 +1,7 @@
 package beaker.core
 
-import beaker.core.thrift.{Ballot, Revision, Transaction}
-import beaker.core.common._
+import beaker.common.relation._
+import beaker.core.thrift._
 
 import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
