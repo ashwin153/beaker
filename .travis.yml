@@ -1,0 +1,75 @@
+####################################################################################################
+#                                            Setup Pants                                           #
+#                      https://github.com/build/pants/blob/master/.travis.yml                      #
+####################################################################################################
+env:
+  global:
+    - JAVA_HOME="$HOME/opt/jdk1.8.0_131"
+    - PANTS_CONFIG_OVERRIDE="['pants.ini', 'build-support/travis/pants.ini']"
+
+before_cache:
+  - sudo chown -R travis:travis "${HOME}" "${TRAVIS_BUILD_DIR}"
+  - find build-support -name "*.py[co]" -delete
+  - find ${HOME}/.ivy2/pants -type f -name "ivydata-*.properties" -delete
+  - rm -f ${HOME}/.ivy2/pants/*.{css,properties,xml,xsl}
+  - rm -rf ${HOME}/.ivy2/pants/com.example
+  - rm -rf ${HOME}/.cache/pants/stats
+
+cache:
+  directories:
+    - ${HOME}/.cache/pants
+    - ${HOME}/.ivy2/pants
+
+####################################################################################################
+#                                            Setup JDK                                             #
+#                   https://github.com/foursquare/fsqio/blob/master/.travis.yml                    #
+####################################################################################################
+before_script: |
+  if ! ${HOME}/opt/jdk1.8.0_131/bin/java -version; then
+    mkdir -p ~/opt
+    wget --no-cookies --no-check-certificate --header \
+      "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" \
+      "http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+    tar xzf jdk-8u131-linux-x64.tar.gz -C ~/opt
+  fi
+
+####################################################################################################
+#                                         Setup Databases                                          #
+#                          https://docs.travis-ci.com/user/database-setup                          #
+####################################################################################################
+services:
+  - mysql
+  - postgresql
+
+addons:
+  postgresql: "9.5"
+
+before_install:
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
+  - psql -c 'CREATE DATABASE test;' -U postgres
+
+####################################################################################################
+#                                         Compile and Test                                         #
+#                   https://github.com/foursquare/fsqio/blob/master/.travis.yml                    #
+####################################################################################################
+language: python
+python:
+  - '2.7'
+
+script: |
+  ./pants compile ::
+  ./pants test ::
+
+####################################################################################################
+#                                          Push to Docker                                          #
+#                             https://docs.travis-ci.com/user/docker/                              #
+####################################################################################################
+services:
+  - docker
+
+after_success: |
+  if [ "$TRAVIS_BRANCH" == "master" ] ; then
+    docker build -t ashwin153/caustic .
+    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    docker push ashwin153/caustic
+  fi
