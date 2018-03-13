@@ -1,3 +1,9 @@
+![Logo](https://github.com/ashwin153/caustic/blob/master/caustic-assets/images/banner.png)
+---
+[![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][3]
+[![Maven Central](https://img.shields.io/maven-central/v/com.madavan/beaker-core_2.12.svg)][2]
+[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][4]
+
 # Beaker
 Beaker is a distributed, transactional key-value store that is consistent and available. Beaker uses a 
 leader-less variation of [Generalized Paxos][1] to consistently execute transactions. Beaker permits 
