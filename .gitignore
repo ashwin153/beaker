@@ -1,0 +1,36 @@
+####################################################################################################
+#                                            .gitignore                                            #
+####################################################################################################
+# macOS
+.DS_Store
+
+# Java
+*.class
+*.jar
+
+# Python
+*.pyc
+
+# Vim
+.*.swo
+.*.swp
+
+# IntelliJ 
+.idea/
+*.iml
+
+# Pants
+.cache
+dist
+.pants.d
+.pants.workdir.file_lock
+.pids
+
+# Generated
+target/
+
+# LaTeX
+*.aux
+*.dvi
+*.log
+*.out
