@@ -5,4 +5,10 @@ java_thrift_library(
     dependencies=[
         '3rdparty/jvm:thrift',
     ],
+    provides=artifact(
+        org='com.madavan',
+        name='beaker-thrift',
+        repo=public,
+        publication_metadata=describe,
+    ),
 )

@@ -12,4 +12,10 @@ scala_library(
         '3rdparty/jvm:pureconfig',
         '3rdparty/jvm:jedis',
     ],
+    provides=artifact(
+        org='com.madavan',
+        name='beaker-core_2.12',
+        repo=public,
+        publication_metadata=describe,
+    ),
 )
