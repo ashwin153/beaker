@@ -89,7 +89,7 @@ practical systems, beakers may join or leave the cluster arbitrarily as the clus
 in size. In this section, we describe how *fresh* beakers are *bootstrapped* when they join an 
 existing cluster. When a fresh beaker joins a cluster, its database is initially empty. In order to 
 guarantee correctness, its database must be immediately populated with the latest revision of every
-key-value pair. Otherwise, if ```N -+ 1``` fresh beakers join a cluster of size ```N``` it 
+key-value pair. Otherwise, if ```N + 1``` fresh beakers join a cluster of size ```N``` it 
 is possible for a quorum to consist entirely of fresh beakers. 
 
 A naive solution might be for the fresh beaker to propose a read-only transaction that depends on
@@ -106,4 +106,11 @@ fresh beaker reads the contents of the database from a quorum. It then assembles
 transaction and commits it on its replica. It then joins the cluster as a voting member. This 
 approach consumes just ```D * N / 2``` in bandwidth and permits concurrent proposals.
 
+A -> B
+A quorum must consist of B - A - 1 to be guaranteed to overlap with the previous quorum. For 
+example, if the cluster grows from 3 to 8 then a quorum must consist of 6.
+If the
+cluster grows from 
+
+We need every majority to contain the previous majority.  
 [1]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf
