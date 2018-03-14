@@ -101,16 +101,12 @@ database of size ```D``` such a proposal consumes ```D * (3 * N / 2 + N * N)``` 
 Furthermore, it prevents any proposals from being accepted in the interim.
 
 We can improve this solution by decoupling bootstrapping and consensus. A fresh beaker joins the 
-cluster as a non-voting member; it learns proposals, but does not participate in consensus. The 
-fresh beaker reads the contents of the database from a quorum. It then assembles a repair 
-transaction and commits it on its replica. It then joins the cluster as a voting member. This 
-approach consumes just ```D * N / 2``` in bandwidth and permits concurrent proposals.
+cluster as a partial member; it accepts and learns proposals, but cannot prepare them. Therefore,
+a partial member will vote for every proposal. A proposal is learned when a majority of when it 
+receives ```P + (N / 2 + 1)``` votes, where ```N``` is the size of the cluster and ```P``` is the 
+number of partial members at the time the proposal was prepared. The fresh beaker reads the contents 
+of the database from a quorum of voting members. It then assembles a repair transaction and commits 
+it on its replica. It then joins the cluster as a voting member. This approach consumes just 
+```D * N / 2``` in bandwidth and permits concurrent proposals.
 
-A -> B
-A quorum must consist of B - A - 1 to be guaranteed to overlap with the previous quorum. For 
-example, if the cluster grows from 3 to 8 then a quorum must consist of 6.
-If the
-cluster grows from 
-
-We need every majority to contain the previous majority.  
 [1]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf

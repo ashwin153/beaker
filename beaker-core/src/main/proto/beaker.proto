@@ -2,12 +2,14 @@ syntax = "proto3";
 package beaker.core;
 
 /**
+ * A collection of keys.
+ */
+message Keys {
+  repeated string list = 1;
+}
+
+/**
  * A versioned value. Revisions are uniquely-identified and totally-ordered by their version.
- * Revisions are monotonic; if a transaction changes a key for which there exists a newer revision,
- * the modification is discarded.
- *
- * @param version Version number.
- * @param value Value.
  */
 message Revision {
   uint64 version = 1;
@@ -15,11 +17,15 @@ message Revision {
 }
 
 /**
+ * A collection of revisions.
+ */
+message Revisions {
+  map<string, Revision> entries = 1;
+}
+
+/**
  * A conditional update. Transactions depend on the versions of a set of keys, called its readset,
- * and update the revisions of a set of keys, called its writeset. Defaults to an empty transaction.
- *
- * @param depends Version dependencies.
- * @param updates Changed revisions.
+ * and change the revisions of a set of keys, called its writeset. Defaults to an empty transaction.
  */
 message Transaction {
   map<string, uint64> depends = 1;
@@ -27,10 +33,8 @@ message Transaction {
 }
 
 /**
- * A monotonically-increasing, globally-unique sequence number. Defaults to the zero ballot.
- *
- * @param round Locally-unique number.
- * @param id Globally-unique number.
+ * A monotonically-increasing, globally-unique sequence number formed by concatenating a
+ * locally-unique round number with a globally-unique identifier. Defaults to the zero ballot.
  */
 message Ballot {
   uint32 round = 1;
@@ -41,10 +45,6 @@ message Ballot {
  * A collection of non-conflicting transactions. These transactions may conditionally apply updates
  * or unconditionally repair stale revisions. Proposals are uniquely-identified and totally-ordered
  * by their ballot.
- *
- * @param ballot Ballot number.
- * @param commits Transactions to commit.
- * @param repairs Repairs to perform.
  */
 message Proposal {
   Ballot ballot = 1;
@@ -53,31 +53,14 @@ message Proposal {
 }
 
 /**
- *
- * @param list
- */
-message Keys {
-  repeated string list = 1;
-}
-
-/**
- *
- * @param latest
- */
-message Revisions {
-  map<string, Revision> latest = 1;
-}
-
-/**
- *
- * @param committed
+ * A response indicating whether or not a proposed transaction was committed.
  */
 message Result {
   bool committed = 1;
 }
 
 /**
- *
+ * An empty response.
  */
 message Void {
 
@@ -89,15 +72,22 @@ message Void {
 service BeakerService {
 
   /**
-   * Returns the latest known revision of each key.
+   * Returns the latest revision of each key.
    *
    * @param keys Keys to get.
    * @return Revision of each key.
    */
-  rpc Get(Keys) returns (Revisions);
+  rpc Get(Keys) returns (stream Revisions);
 
   /**
-   * Conditionally applies the updates if and only if they depend on the latest versions.
+   * Returns the latest revisions of every key.
+   *
+   * @return Revisions of every key.
+   */
+  rpc Scan(Void) returns (stream Revisions);
+
+  /**
+   * Conditionally applies its changes if and only if it depends on the latest versions.
    *
    * @param depends Dependencies.
    * @param updates Updates to apply.
@@ -117,24 +107,19 @@ service BeakerService {
   rpc Prepare(Proposal) returns (Proposal);
 
   /**
-   * Casts a vote for a proposal if and only if a promise has not been made to a newer proposal.
+   * Requests a vote for a proposal. Beakers cast a vote for a proposal if and only if a promise has
+   * not been made to a newer proposal.
    *
    * @param proposal Proposal to accept.
-   * @return Whether or not the proposal was accepted.
    */
   rpc Accept(Proposal) returns (Void);
 
   /**
-   * Votes for a proposal. Beakers commit the transactions and repairs of a proposal once a majority
-   * of beakers vote for it.
+   * Casts a vote for a proposal. Beakers commit the transactions and repairs of a proposal once a
+   * quorum of beakers vote for it.
    *
    * @param proposal Proposal to learn.
    */
   rpc Learn(Proposal) returns (Void);
-
-  /**
-   *
-   */
-  rpc Scan(Void) returns (stream Revisions);
 
 }
