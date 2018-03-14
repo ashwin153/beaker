@@ -22,7 +22,7 @@ beaker/                             https://github.com/ashwin153/beaker
 
 # YCSB Benchmarks
 ycsb/                               https://github.com/ashwin153/YCSB
-+---caustic                         Caustic integration.
++---beaker                          Beaker integration.
 ```
 
 # Requirements
