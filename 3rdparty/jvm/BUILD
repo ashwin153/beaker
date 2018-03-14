@@ -29,6 +29,11 @@ jar_library(name='curator-test', jars=[
     jar(org='org.apache.curator', name='curator-test', rev='4.0.0'),
 ])
 
+# gRPC Netty
+jar_library(name='grpc-netty', jars=[
+    jar(org='io.grpc', name='grpc-netty', rev='1.10.0'),
+])
+
 # Jedis
 jar_library(name='jedis', jars=[
     jar(org='redis.clients', name='jedis', rev='2.9.0'),
@@ -56,8 +61,23 @@ jar_library(name='postgres', jars=[
 ])
 
 # Protobuf
-jar_library(name='protobuf', scope='forced', jars = [
+jar_library(name='protobuf', jars = [
     jar(org='com.google.protobuf', name='protobuf-java', rev='3.1.0'),
+])
+
+# ScalaPB Compiler
+jar_library(name='scalapbc', jars=[
+    scala_jar(org='com.trueaccord.scalapb', name='scalapbc', rev='0.6.7'),
+])
+
+# ScalaPB Runtime
+jar_library(name='scalapb-runtime', jars = [
+    jar(org='com.trueaccord.scalapb', name='scalapb-runtime_2.12', rev='0.6.7')
+])
+
+# ScalaPB gRPC
+jar_library(name='scalapb-runtime-grpc', jars = [
+    jar(org='com.trueaccord.scalapb', name='scalapb-runtime-grpc_2.12', rev='0.6.7')
 ])
 
 # Pureconfig

@@ -12,3 +12,9 @@ target(name='scalac', dependencies=['3rdparty/jvm:scala-compiler'])
 target(name='scala-library', dependencies=['3rdparty/jvm:scala-library'])
 target(name='scala-reflect', dependencies=['3rdparty/jvm:scala-reflect'])
 target(name='scala-repl', dependencies=[':ammonite'])
+
+####################################################################################################
+#                                            ScalaPB                                               #
+#                               https://github.com/scalapb/ScalaPB                                 #
+####################################################################################################
+target(name='scalapbc', dependencies=['3rdparty/jvm:scalapbc'])

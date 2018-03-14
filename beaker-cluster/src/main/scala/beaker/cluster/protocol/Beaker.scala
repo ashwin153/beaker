@@ -1,11 +1,12 @@
 package beaker.cluster
 package protocol
 
-import beaker.core.thrift
-import beaker.core.thrift.Revision
+import beaker.core.protobuf._
 import beaker.cluster
-
+import beaker.core.protobuf.BeakerGrpc
+import io.grpc.{Channel, ManagedChannel, ManagedChannelBuilder}
 import scala.collection.JavaConverters._
+import scala.collection.concurrent.TrieMap
 
 /**
  * A Beaker implementation.
@@ -21,22 +22,22 @@ object Beaker {
    */
   case object Service extends cluster.Service[Beaker.Client] {
 
-    private val underlying = Thrift.Service(new thrift.Beaker.Client.Factory())
-
     override def connect(address: Address): Beaker.Client =
-      Beaker.Client(this.underlying.connect(address))
+      Beaker.Client(ManagedChannelBuilder.forAddress(address.host, address.port).build())
 
     override def disconnect(client: Beaker.Client): Unit =
-      this.underlying.disconnect(client.underlying)
+      client.channel.shutdown()
 
   }
 
   /**
    * A Beaker client.
    *
-   * @param underlying Underlying [[Thrift.Client]].
+   * @param channel Underlying [[Channel]].
    */
-  case class Client(underlying: Thrift.Client[thrift.Beaker.Client]) {
+  case class Client(channel: ManagedChannel) {
+
+    private[this] val underlying = BeakerGrpc.blockingStub(this.channel)
 
     /**
      * Returns the latest known [[Revision]] of each key.
@@ -45,7 +46,7 @@ object Beaker {
      * @return Latest known [[Revision]] of each key.
      */
     def get(keys: Set[Key]): Map[Key, Revision] =
-      this.underlying.connection.get(keys.asJava).asScala.toMap
+      this.underlying.get(Keys(keys.toSeq)).entries
 
     /**
      * Returns the latest known [[Revision]] of the key.
@@ -78,14 +79,18 @@ object Beaker {
 
     /**
      * Conditionally applies the changes if and only if the dependencies remain unchanged. Returns
-     * true if the changes were applied and false otherwise.
+     * true if the changes were applied and false otherwise. Changes implicitly depend on the
+     * initial version if no dependency is specified.
      *
      * @param depends Dependent versions.
      * @param changes Updated values.
      * @return Whether or not changes were applied.
      */
-    def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Boolean =
-      this.underlying.connection.cas(depends.mapValues(long2Long).asJava, changes.asJava)
+    def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Boolean = {
+      val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
+      val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
+      this.underlying.propose(Transaction(rset, wset)).successful
+    }
 
     /**
      * Reloads the latest values of the keys. Guarantees that every instance will store the latest

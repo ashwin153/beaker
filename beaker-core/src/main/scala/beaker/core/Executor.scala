@@ -2,6 +2,7 @@ package beaker.core
 
 import beaker.common.concurrent.Task
 import beaker.common.relation.Relation
+
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.{Condition, ReentrantLock}

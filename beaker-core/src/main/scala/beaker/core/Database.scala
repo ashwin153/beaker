@@ -1,10 +1,9 @@
 package beaker.core
 
 import beaker.core.Database.Conflicts
-import beaker.core.thrift.{Revision, Transaction}
+import beaker.core.protobuf._
 
 import java.io.Closeable
-import scala.collection.JavaConverters._
 import scala.math.Ordering.Implicits._
 import scala.util.{Failure, Try}
 
@@ -41,14 +40,12 @@ trait Database extends Closeable {
    * @return Whether or not the transaction was committed.
    */
   def commit(transaction: Transaction): Try[Unit] = {
-    val wset = transaction.changes.asScala.toMap
-    val rset = transaction.depends.asScala.toMap
-
+    val (rset, wset) = (transaction.depends, transaction.changes)
     read(rset.keySet ++ wset.keySet) flatMap { values =>
-      val latest  = values.withDefaultValue(new thrift.Revision(0L, ""))
+      val latest  = values.withDefaultValue(Revision.defaultInstance)
       val invalid = rset collect { case (k, v) if v < latest(k).version => k -> latest(k) }
-      val changes = wset collect { case (k, v) if v > latest(k) => k -> v }
-      if (invalid.isEmpty) write(changes) else Failure(Database.Conflicts(invalid))
+      val updates = wset collect { case (k, v) if v > latest(k) => k -> v }
+      if (invalid.isEmpty) write(updates) else Failure(Database.Conflicts(invalid))
     }
   }
 

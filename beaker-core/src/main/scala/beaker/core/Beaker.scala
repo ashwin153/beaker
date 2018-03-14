@@ -1,23 +1,22 @@
 package beaker.core
 
+import beaker.cluster
+import beaker.cluster.{Address, Cluster}
 import beaker.common.concurrent._
 import beaker.common.relation._
 import beaker.core.storage.Local
-import beaker.core.thrift._
-import beaker.cluster.protocol.Thrift
-import beaker.cluster.{Address, Announcer, Cluster}
+import beaker.core.protobuf._
 
-import org.apache.thrift.async.AsyncMethodCallback
+import io.grpc.ServerBuilder
 
 import java.io.Closeable
-import java.{lang, util}
 import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.language.postfixOps
 import scala.math.Ordering.Implicits._
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.Try
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 /**
@@ -34,8 +33,9 @@ case class Beaker(
   database: Database,
   executor: Executor[Transaction],
   cluster: Cluster[Internal.Client],
-  backoff: Duration = 1 second
-) extends thrift.Beaker.AsyncIface with Closeable {
+  backoff: Duration = 1 second,
+  quorum: Int
+) extends BeakerGrpc.Beaker with Closeable {
 
   var round    : AtomicInteger                  = new AtomicInteger(1)
   val proposed : mutable.Map[Transaction, Task] = mutable.Map.empty
@@ -60,40 +60,44 @@ case class Beaker(
   def consensus(proposal: Proposal): Try[Unit] = {
     // Prepare the proposal on a quorum of beakers.
     this.cluster.quorum(_.prepare(proposal)) flatMap { promises =>
-      val maximum = promises.map(_.ballot).max
-      if (maximum > proposal.ballot) {
+      val maximum = promises.map(_.getBallot).max
+
+      if (maximum > proposal.getBallot) {
         // If a promise has been made to a newer proposal, then retry with a higher ballot.
         Thread.sleep(backoff.toMillis)
         val newest = this.round.updateAndGet(i => (i max maximum.round) + 1)
-        val ballot = new Ballot(newest, this.id)
-        consensus(proposal.setBallot(ballot))
+        val ballot = Ballot(newest, this.id)
+        consensus(proposal.withBallot(ballot))
       } else {
         // Otherwise, merge the returned promises into a single proposal.
-        val promise = promises.reduce[Proposal](merge).setBallot(proposal.ballot)
+        val promise = promises.reduce[Proposal](merge).copy(ballot = proposal.ballot)
+
         if (!matches(proposal, proposal)) {
           // If the promise does not match the proposal, then retry with the promise.
           Thread.sleep(backoff.toMillis)
           val newest = this.round.getAndIncrement()
-          val ballot = new Ballot(newest, this.id)
-          consensus(promise.setBallot(ballot))
+          val ballot = Ballot(newest, this.id)
+          consensus(promise.withBallot(ballot))
         } else {
           // Otherwise, get the keys that read by the promise from a quorum of beakers.
-          val depends = promise.applies.asScala.flatMap(_.depends.asScala.keySet)
+          val depends = promise.applies.flatMap(_.depends.keySet)
+          val changes = promise.applies.flatMap(_.changes.keySet)
+
           this.cluster.quorum(_.get(depends.toSet)) filter { replicas =>
             // Determine the latest and the oldest version of each key.
-            val latest = replicas.reduce(merge(_, _))
-            val oldest = replicas.reduce(merge(_, _)(revisionOrdering.reverse))
-
-            // Discard all transactions in the promise that cannot be committed.
+            val latest   = replicas.reduce(merge(_, _))
+            val oldest   = replicas.reduce(merge(_, _)(revisionOrdering.reverse))
             val snapshot = Local.Database(latest)
-            promise.applies.removeIf(snapshot.commit(_).isFailure)
 
-            // Set the repairs of the promise to the latest revisions of keys that are read - but
-            // not written - by the promise for which the beakers disagree on their version.
-            latest collect { case (k, v) if oldest(k) < v => promise.repairs.putToChanges(k, v) }
+            // Discard all transactions in the promise that cannot be committed and repair all keys
+            // that are read - but not written - by the transaction with different revisions.
+            val applies = promise.applies.filter(snapshot.commit(_).isSuccess)
+            val stale   = (latest -- changes) filter { case (k, r) => oldest(k) < r }
+            val repairs = merge(proposal.getRepairs, Transaction(Map.empty, stale))
 
-            // Filter promises that do not contain any transactions or repairs.
-            !promise.applies.isEmpty || !promise.repairs.changes.isEmpty
+            // Filter accepted proposals that do not contain any transactions or repairs.
+            val accept = promise.copy(applies = applies, repairs = Some(repairs))
+            accept.applies.nonEmpty || accept.getRepairs.changes.nonEmpty
           } flatMap { _ =>
             // Otherwise, send the promise to a quorum of beakers and retry automatically.
             this.cluster.quorum(_.accept(promise))
@@ -105,88 +109,65 @@ case class Beaker(
     }
   }
 
-  override def get(
-    keys: util.Set[Key],
-    handler: AsyncMethodCallback[util.Map[Key, Revision]]
-  ): Unit = {
+  override def get(keys: Keys): Future[Revisions] = {
     // Performs a read-only transaction on the underlying database.
-    val depends = keys.asScala.map(_ -> long2Long(0L)).toMap
-    val readOnly = new Transaction(depends.asJava, new util.HashMap)
-
-    this.executor.submit(readOnly)(_ => this.database.read(depends.keySet)) onComplete {
-      case Success(r) => handler.onComplete(r.asJava)
-      case Failure(e) => handler.onComplete(new util.HashMap)
-    }
+    val depends  = keys.contents.map(_ -> 0L).toMap
+    val readOnly = Transaction(depends, Map.empty)
+    val latest   = this.executor.submit(readOnly)(t => this.database.read(t.depends.keySet))
+    latest recover { case _ => Map.empty[Key, Revision] } map Revisions.apply
   }
 
-  override def cas(
-    depends: util.Map[Key, Version],
-    changes: util.Map[Key, Value],
-    handler: AsyncMethodCallback[lang.Boolean]
-  ): Unit = synchronized {
-    // Changes implicitly depend on the initial version if no dependency is specified.
-    val rset = depends.asScala ++ changes.asScala.keySet.map(k => k -> depends.getOrDefault(k, 0L))
-    val wset = changes.asScala map { case (k, v) => k -> new Revision(rset(k) + 1, v) }
-
-    // Constructs a proposal containing only the dependencies and changes.
-    val ballot = new Ballot(this.round.getAndIncrement(), this.id)
-    val transaction = new Transaction(rset.asJava, wset.asJava)
-    val proposal = new Proposal(ballot, Set(transaction).asJava, new Transaction())
+  override def propose(transaction: Transaction): Future[Result] = {
+    val ballot = Ballot(this.round.getAndIncrement(), this.id)
+    val proposal = Proposal(Some(ballot), Seq(transaction))
 
     // Asynchronously attempt to reach consensus on the proposal.
     val daemon = Task(consensus(proposal))
     this.proposed += transaction -> daemon
-    daemon.future onComplete {
-      case Success(_) => handler.onComplete(true)
-      case Failure(_) => handler.onComplete(false)
-    }
+    daemon.future map { _ => Result(true) } recover { case _ => Result(false) }
   }
 
-  override def prepare(
-    proposal: Proposal,
-    handler: AsyncMethodCallback[Proposal]
-  ): Unit = synchronized {
+  override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
     this.promised.find(_ |> proposal) match {
       case Some(r) =>
         // If a promise has been made to a newer proposal, its ballot is returned.
-        handler.onComplete(new Proposal().setBallot(r.ballot))
+        Future(Proposal(r.ballot))
       case None =>
         // Otherwise, the beaker promises not to accept any proposal that conflicts with the
         // proposal it returns that has a lower ballot than the proposal it receives. If a beaker
         // has already accepted older proposals, it merges them together and returns the result.
         // Otherwise, it returns the proposal with the zero ballot.
         val accept = this.accepted.filter(_ <| proposal)
-        val promise = accept.reduceOption[Proposal](merge).getOrElse(proposal.setBallot(new Ballot()))
+        val promise = accept.reduceOption[Proposal](merge).getOrElse(proposal.withBallot(Ballot()))
         this.promised --= this.promised.filter(_ <| proposal)
-        this.promised += promise.setBallot(proposal.ballot)
-        handler.onComplete(promise)
+        this.promised += promise.copy(ballot = proposal.ballot)
+        Future(promise)
     }
   }
 
-  override def accept(
-    proposal: Proposal,
-    handler: AsyncMethodCallback[Void]
-  ): Unit = synchronized {
+  override def accept(proposal: Proposal): Future[Result] = synchronized {
     if (!this.promised.exists(p => p.ballot < proposal.ballot && (p |> proposal))) {
-      // A beaker accepts a proposal if it has not promised not to. If a beaker accepts a proposal,
-      // it discards all older accepted proposals and broadcasts a vote for it.
+      // If the beaker has not promised not to accept the proposal, then it accepts the proposal and
+      // broadcasts a vote for it.
       this.accepted --= this.accepted.filter(_ <| proposal)
       this.accepted += proposal
       this.cluster.broadcast(_.learn(proposal))
+      Future(Result(true))
+    } else {
+      // Otherwise, it rejects the proposal.
+      Future(Result(false))
     }
   }
 
-  override def learn(
-    proposal: Proposal,
-    handler: AsyncMethodCallback[Void]
-  ): Unit = synchronized {
+  override def learn(proposal: Proposal): Future[Void] = synchronized {
+    // Vote for the proposal and discard older learned proposals.
     val votes = this.learned.getOrElse(proposal, 0)
     this.learned --= this.learned.keys.filter(_ <| proposal)
     this.learned(proposal) = votes + 1
 
-    if (this.learned(proposal) == this.cluster.size / 2 + 1) {
+    if (this.learned(proposal) == quorum) {
       // Commit its transactions and repairs and discard older accepted proposals.
-      val transactions = proposal.applies.asScala + proposal.repairs
+      val transactions = proposal.applies ++ proposal.repairs
       transactions.foreach(this.executor.submit(_)(this.database.commit))
       this.accepted.retain(p => !(p <| proposal))
 
@@ -196,6 +177,8 @@ case class Beaker(
         case (t, u) if transactions.exists(_ ~ t) => u.cancel(); t
       }
     }
+
+    Future(Void())
   }
 
   override def close(): Unit = {
@@ -210,27 +193,30 @@ object Beaker {
   /**
    * A Beaker server.
    *
-   * @param address Network location.
-   * @param database Underlying database..
-   * @param cluster Beaker cluster.
+   * @param port Port number.
+   * @param beaker Beaker service.
    */
   case class Server(
-    address: Address,
-    database: Database,
-    cluster: Cluster[Internal.Client]
-  ) extends beaker.cluster.Server {
+    port: Int,
+    beaker: Beaker
+  ) extends cluster.Server {
 
-    val beaker     = Beaker(address.hashCode(), this.database, Executor(), this.cluster)
-    val processor  = new thrift.Beaker.AsyncProcessor(this.beaker)
-    val underlying = Announcer(cluster, Thrift.Server(address, this.processor))
+    private val underlying = ServerBuilder
+      .forPort(this.port)
+      .addService(BeakerGrpc.bindService(beaker, ExecutionContext.global))
+      .build()
+
+    override val address: Address =
+      Address.local(this.port)
 
     override def serve(): Unit = {
-      this.underlying.serve()
+      this.beaker.cluster.join(this.address)
+      this.underlying.start()
     }
 
     override def close(): Unit = {
-      this.underlying.close()
-      this.beaker.close()
+      this.beaker.cluster.leave(this.address)
+      this.underlying.shutdown()
     }
 
   }

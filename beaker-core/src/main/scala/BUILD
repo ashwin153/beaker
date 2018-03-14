@@ -4,14 +4,15 @@ scala_library(
     dependencies=[
         'beaker-cluster/src/main/scala',
         'beaker-common/src/main/scala',
-        'beaker-core/src/main/thrift',
+        'beaker-core/src/main/protobuf',
+        'beaker-core/src/main/resources',
         '3rdparty/jvm:c3p0',
         '3rdparty/jvm:caffeine',
         '3rdparty/jvm:curator',
+        '3rdparty/jvm:jedis',
         scoped('3rdparty/jvm:mysql', scope='runtime'),
         scoped('3rdparty/jvm:postgres', scope='runtime'),
         '3rdparty/jvm:pureconfig',
-        '3rdparty/jvm:jedis',
     ],
     provides=artifact(
         org='com.madavan',

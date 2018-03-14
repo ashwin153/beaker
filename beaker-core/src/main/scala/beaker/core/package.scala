@@ -1,18 +1,13 @@
 package beaker
 
 import beaker.common.relation._
-import beaker.core.thrift._
+import beaker.core.protobuf._
 
-import java.util
-import java.util.Collections._
-import scala.collection.JavaConverters._
 import scala.math.Ordering.Implicits._
 
 package object core {
 
   type Key = String
-  type Version = java.lang.Long
-  type Value = String
 
   // Ballots are totally ordered by their (round, id).
   implicit val ballotOrdering: Ordering[Ballot] = (x, y) => {
@@ -26,14 +21,14 @@ package object core {
 
   // Proposals are partially ordered by their ballot whenever their transactions conflict.
   implicit val proposalOrder: Order[Proposal] = (x, y) => {
-    x.applies.asScala.find(t => y.applies.asScala.exists(_ ~ t)).map(_ => x.ballot <= y.ballot)
+    x.applies.find(t => y.applies.exists(_ ~ t)).map(_ => x.getBallot <= y.getBallot)
   }
 
   // Transactions conflict if either reads or writes a key that the other writes.
   implicit val transactionRelation: Relation[Transaction] = (x, y) => {
-    val (xr, xw) = (x.depends.keySet(), x.changes.keySet())
-    val (yr, yw) = (y.depends.keySet(), y.changes.keySet())
-    !disjoint(xr, yw) || !disjoint(yr, xw) || !disjoint(xw, yw)
+    val (xr, xw) = (x.depends.keySet, x.changes.keySet)
+    val (yr, yw) = (y.depends.keySet, y.changes.keySet)
+    xr.intersect(yw).nonEmpty || yr.intersect(xw).nonEmpty || xw.intersect(yw).nonEmpty
   }
 
   /**
@@ -57,11 +52,9 @@ package object core {
    */
   def merge(x: Proposal, y: Proposal): Proposal = {
     val (latest, oldest) = if (x <| y) (y, x) else (x, y)
-    val filter = oldest.applies.asScala.filterNot(t => latest.applies.asScala.exists(_ ~ t))
-    val merged = new Proposal(latest)
-    filter.foreach(merged.addToApplies)
-    merged.repairs = merge(latest.repairs, oldest.repairs)
-    merged
+    val applies = latest.applies ++ oldest.applies.filterNot(t => latest.applies.exists(_ ~ t))
+    val repairs = merge(latest.getRepairs, oldest.getRepairs)
+    latest.copy(applies = applies, repairs = Some(repairs))
   }
 
   /**
@@ -72,9 +65,7 @@ package object core {
    * @return Union of transactions.
    */
   def merge(x: Transaction, y: Transaction): Transaction = {
-    val depends = merge(x.depends.asScala.toMap, y.depends.asScala.toMap).asJava
-    val changes = merge(x.changes.asScala.toMap, y.changes.asScala.toMap).asJava
-    new Transaction(depends, changes)
+    Transaction(merge(x.depends, y.depends), merge(x.changes, y.changes))
   }
 
   /**

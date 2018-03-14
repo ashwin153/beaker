@@ -1,8 +1,7 @@
 package beaker.core
 
-import beaker.core.thrift.{Revision, Transaction}
+import beaker.core.protobuf._
 
-import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -57,7 +56,7 @@ trait Cache extends Database {
     this.database.commit(transaction) match {
       case Success(_) =>
         // Update the values of changed keys.
-        update(transaction.changes.asScala.toMap)
+        update(transaction.changes)
       case Failure(Database.Conflicts(invalid)) =>
         // Update the invalid keys and propagate failures.
         update(invalid)

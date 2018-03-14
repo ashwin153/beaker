@@ -2,7 +2,7 @@ package beaker.core
 package storage
 
 import beaker.core
-import beaker.core.thrift._
+import beaker.core.protobuf._
 
 import com.mchange.v2.c3p0.{ComboPooledDataSource, PooledDataSource}
 

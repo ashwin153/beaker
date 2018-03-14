@@ -2,10 +2,9 @@ package beaker.core
 package storage
 
 import beaker.core
-import beaker.core.thrift._
+import beaker.core.protobuf._
 
 import com.github.benmanes.caffeine.{cache => caffeine}
-
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
