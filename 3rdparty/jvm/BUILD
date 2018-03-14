@@ -55,6 +55,11 @@ jar_library(name='postgres', jars=[
     jar(org='postgresql', name='postgresql', rev='9.1-901.jdbc4'),
 ])
 
+# Protobuf
+jar_library(name='protobuf', scope='forced', jars = [
+    jar(org='com.google.protobuf', name='protobuf-java', rev='3.1.0'),
+])
+
 # Pureconfig
 jar_library(name='pureconfig', jars=[
     jar(org='com.github.pureconfig', name='pureconfig_2.12', rev='0.8.0'),
