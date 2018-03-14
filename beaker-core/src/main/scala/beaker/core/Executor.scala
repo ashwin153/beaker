@@ -1,5 +1,6 @@
-package beaker.common.concurrent
+package beaker.core
 
+import beaker.common.concurrent.Task
 import beaker.common.relation.Relation
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
@@ -9,11 +10,11 @@ import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 /**
- * A task scheduler. Executors guarantee that for any tasks A, B such that A ~ B, A and B will never
- * be executed simultaneously. They execute related tasks sequentially and unrelated tasks
- * concurrently. Loosely based on https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf.
+ * A command scheduler. Executors guarantee linearized execution of related commands; for any
+ * commands A ~ B, A and B will never be executed simultaneously.
  *
- * @param relation Task relation.
+ * @see https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf
+ * @param relation Command relation.
  */
 class Executor[T](relation: Relation[T]) extends Closeable {
 
@@ -45,16 +46,16 @@ class Executor[T](relation: Relation[T]) extends Closeable {
   }
 
   /**
-   * Asynchronously executes the task and returns the result. Blocks until the task has been
+   * Asynchronously executes the command and returns the result. Blocks until the command has been
    * scheduled, so that if a thread submits A before B and A ~ B, then A will be executed
-   * before B. Tasks are greedily scheduled; let S(T) denote the epoch in which a task T has been
+   * before B. Commands are greedily scheduled; let S(T) denote the epoch in which a task T has been
    * scheduled. For any task A, S(A) = max(S(B)) + 1 for all B such that A ~ B.
    *
-   * @param arg Task argument.
-   * @param task Task to schedule.
-   * @return Future containing result of task execution.
+   * @param arg Command argument.
+   * @param command Command to execute.
+   * @return Future containing result of command execution.
    */
-  def submit[U](arg: T)(task: T => Try[U]): Future[U] = {
+  def submit[U](arg: T)(command: T => Try[U]): Future[U] = {
     val scheduled = new CountDownLatch(1)
     val promise = Promise[U]()
 
@@ -69,7 +70,7 @@ class Executor[T](relation: Relation[T]) extends Closeable {
         this.schedule -= arg
       } finally {
         this.lock.unlock()
-        promise.complete(task(arg))
+        promise.complete(command(arg))
         this.barrier.countDown()
       }
     })
@@ -86,7 +87,7 @@ object Executor {
   /**
    * Constructs an executor from the implicit relation.
    *
-   * @param relation Task relation.
+   * @param relation Command relation.
    * @return Executor on relation.
    */
   def apply[T]()(implicit relation: Relation[T]): Executor[T] = new Executor[T](relation)

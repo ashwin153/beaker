@@ -1,13 +1,11 @@
-package beaker.common.concurrent
+package beaker.core
 
 import beaker.common.relation._
-
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FunSuite, Matchers}
-
-import java.util.concurrent.{CountDownLatch, TimeUnit}
 import scala.util.Try
 
 @RunWith(classOf[JUnitRunner])

@@ -1,0 +1,10 @@
+java_protobuf_library(
+    name='proto',
+    sources=rglobs('*.proto'),
+    provides=artifact(
+        org='com.madavan',
+        name='beaker-proto',
+        repo=public,
+        publication_metadata=describe,
+    ),
+)
