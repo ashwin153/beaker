@@ -3,11 +3,10 @@
 [![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][1]
 [![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][2]
 
-Beaker is a distributed, transactional key-value store that is consistent and available. Beaker is
-```N / 2``` fault tolerant but assumes that failures are fail-stop, messages are received in order,
-and network partitions never occur. Beaker is strongly consistent; conflicting transactions are
-linearized but non-conflicting transactions are not. Beaker features monotonic reads and 
-read-your-write consistency.
+Beaker is a distributed, transactional key-value store. Beaker is ```N / 2``` fault tolerant but 
+assumes that failures are fail-stop and that messages are received in order. Beaker is strongly 
+consistent; conflicting transactions are linearized. Beaker features monotonic reads, 
+read-your-write consistency, and tunable availability and partition tolerance.
 
 # Structure
 ```
