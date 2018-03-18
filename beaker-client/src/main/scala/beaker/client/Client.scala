@@ -5,8 +5,7 @@ import beaker.server.protobuf._
 import io.grpc.stub.StreamObserver
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
-import java.util.concurrent.CountDownLatch
-import scala.collection.mutable
+import scala.concurrent.{Future, Promise}
 
 /**
  * A Beaker client.
@@ -15,14 +14,6 @@ import scala.collection.mutable
  */
 class Client(channel: ManagedChannel) {
 
-  private[this] val blocking = BeakerGrpc.blockingStub(this.channel)
-  private[this] val async = BeakerGrpc.stub(this.channel)
-
-  /**
-   * Closes the underlying channel.
-   */
-  def close(): Unit = this.channel.shutdown()
-
   /**
    * Returns the revisions of the keys.
    *
@@ -30,7 +21,7 @@ class Client(channel: ManagedChannel) {
    * @return Revisions of keys.
    */
   def get(keys: Set[Key]): Map[Key, Revision] =
-    this.blocking.get(Keys(keys.toSeq)).contents
+    BeakerGrpc.blockingStub(this.channel).get(Keys(keys.toSeq)).entries
 
   /**
    * Returns the revision of the key.
@@ -39,6 +30,34 @@ class Client(channel: ManagedChannel) {
    * @return Revision of key.
    */
   def get(key: Key): Option[Revision] = get(Set(key)).get(key)
+
+  /**
+   * Conditionally applies the changes if the dependencies remain unchanged.
+   *
+   * @param depends Dependencies.
+   * @param changes Changes to apply.
+   * @return Whether or not the changes were applied.
+   */
+  def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Boolean = {
+    val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
+    val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
+    BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)).successful
+  }
+
+  /**
+   * Closes the underlying channel.
+   */
+  def close(): Unit = this.channel.shutdown()
+
+  /**
+   * Asynchronously applies the function to every key limit keys at a time.
+   *
+   * @param f Function to apply.
+   * @param limit Chunk size.
+   * @return Asynchronous result.
+   */
+  def foreach[U](f: (Key, Revision) => U, limit: Int = 10000): Future[Unit] =
+    scan(_.foreach(f.tupled), limit)
 
   /**
    * Conditionally applies the changes and returns their updated versions.
@@ -63,48 +82,53 @@ class Client(channel: ManagedChannel) {
     put(Map(key -> value)).flatMap(_.get(key))
 
   /**
-   * Conditionally applies the changes if the dependencies remain unchanged.
+   * Attempts to consistently update the cluster.
    *
-   * @param depends Dependencies.
-   * @param changes Changes to apply.
-   * @return Whether or not the changes were applied.
+   * @param cluster Updated cluster.
+   * @return Whether or not the reconfiguration was successful.
    */
-  def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Boolean = {
-    val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
-    val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
-    this.blocking.propose(Transaction(rset, wset)).successful
-  }
+  def reconfigure(cluster: Cluster): Boolean =
+    BeakerGrpc.blockingStub(this.channel).reconfigure(cluster).successful
 
   /**
-   * Returns an inconsistent snapshot of the revisions of all keys.
+   * Asynchronously applies the function to every chunk limit keys at a time.
    *
-   * @return Snapshot of revisions.
+   * @param f Function to apply.
+   * @param limit Chunk size.
+   * @return Asynchronous result.
    */
-  def dump(): Map[Key, Revision] = {
-    val latch = new CountDownLatch(1)
-    var range = Range(limit = 10000)
-    val value = mutable.Map.empty[Key, Revision]
+  def scan[U](f: Map[Key, Revision] => U, limit: Int = 10000): Future[Unit] = {
+    val promise = Promise[Unit]()
+    var range = Range(limit = limit)
 
     // Asynchronously scans the remote beaker and repairs the local beaker.
-    val observer: StreamObserver[Range] = this.async.scan(new StreamObserver[Revisions] {
+    val beaker = BeakerGrpc.stub(this.channel)
+    val observer: StreamObserver[Range] = beaker.scan(new StreamObserver[Revisions] {
       override def onError(throwable: Throwable): Unit =
-        observer.onNext(range)
+        promise.failure(throwable)
 
       override def onCompleted(): Unit =
-        latch.countDown()
+        promise.success(())
 
       override def onNext(revisions: Revisions): Unit = {
-        value ++= revisions.contents
-        range = range.copy(after = revisions.contents.keys.max)
+        f(revisions.entries)
+        range = range.copy(after = revisions.entries.keys.max)
         observer.onNext(range)
       }
     })
 
     // Block until the local beaker is refreshed.
     observer.onNext(range)
-    latch.await()
-    value.toMap
+    promise.future
   }
+
+  /**
+   * Returns the current view of the cluster.
+   *
+   * @return Cluster view.
+   */
+  def view(): Cluster =
+    BeakerGrpc.blockingStub(this.channel).view(Void())
 
 }
 

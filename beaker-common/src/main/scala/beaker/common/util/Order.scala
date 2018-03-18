@@ -1,4 +1,4 @@
-package beaker.common.relation
+package beaker.common.util
 
 import scala.language.implicitConversions
 

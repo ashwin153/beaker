@@ -1,6 +1,6 @@
 package beaker.common.concurrent
 
-import beaker.common.relation.Relation
+import beaker.common.util.Relation
 import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.{Condition, ReentrantLock}

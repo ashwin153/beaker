@@ -1,7 +1,7 @@
 package beaker
 
 import beaker.common.relation._
-
+import beaker.common.util.{Order, Relation}
 import scala.math.Ordering.Implicits._
 import scala.util.Try
 
