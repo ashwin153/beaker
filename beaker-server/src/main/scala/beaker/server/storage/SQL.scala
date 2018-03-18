@@ -1,8 +1,8 @@
-package beaker.core
+package beaker.server
 package storage
 
-import beaker.core
-import beaker.core.protobuf._
+import beaker.server
+import beaker.server.protobuf._
 
 import com.mchange.v2.c3p0.{ComboPooledDataSource, PooledDataSource}
 
@@ -21,7 +21,7 @@ object SQL {
   case class Database(
     pool: PooledDataSource,
     dialect: SQL.Dialect
-  ) extends core.Database {
+  ) extends server.Database {
 
     // Verify that the table schema exists.
     val exists: Try[Unit] = perform(this.dialect.create)
@@ -31,6 +31,9 @@ object SQL {
 
     override def write(changes: Map[Key, Revision]): Try[Unit] =
       if (changes.isEmpty) Success(Map.empty) else perform(this.dialect.upsert(_, changes))
+
+    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] =
+      perform(this.dialect.range(_, after, limit))
 
     override def close(): Unit =
       this.pool.close()
@@ -127,6 +130,16 @@ object SQL {
     def select(con: Connection, keys: Set[Key]): Map[Key, Revision]
 
     /**
+     * Returns the revisions of the first limit keys after the specified key.
+     *
+     * @param con JDBC connection.
+     * @param after Exclusive initial key.
+     * @param limit Maximum number to return.
+     * @return Revisions of keys.
+     */
+    def range(con: Connection, after: Option[Key], limit: Int): Map[Key, Revision]
+
+    /**
      * Bulk upserts the provided changes into the database.
      *
      * @param con JDBC connection.
@@ -186,7 +199,33 @@ object SQL {
           val key     = resultSet.getString("key")
           val version = resultSet.getLong("version")
           val value   = resultSet.getString("value")
-          buffer     += key -> new Revision(version, value)
+          buffer     += key -> Revision(version, value)
+        }
+
+        resultSet.close()
+        statement.close()
+        buffer.toMap
+      }
+
+      override def range(con: Connection, after: Option[Key], limit: Int): Map[Key, Revision] = {
+        val sql =
+          s""" SELECT `key`, `version`, `value`
+             | FROM `caustic`
+             | WHERE `key` ${if (after.isDefined) "> ?"}
+             | LIMIT $limit
+           """.stripMargin
+
+        // Execute the statement, and parse the returned ResultSet.
+        val statement = con.prepareStatement(sql)
+        after.foreach(statement.setString(1, _))
+        val resultSet = statement.executeQuery()
+
+        val buffer = mutable.Buffer.empty[(Key, Revision)]
+        while (resultSet.next()) {
+          val key     = resultSet.getString("key")
+          val version = resultSet.getLong("version")
+          val value   = resultSet.getString("value")
+          buffer     += key -> Revision(version, value)
         }
 
         resultSet.close()
@@ -252,10 +291,10 @@ object SQL {
         // separate SELECT queries for each key, but both were shown to be equally or less
         // performant. https://stackoverflow.com/q/4514697/1447029
         val sql =
-        s""" SELECT key, version, value
-           | FROM caustic
-           | WHERE key IN (${List.fill(keys.size)("?").mkString(",")})
-         """.stripMargin
+          s""" SELECT key, version, value
+             | FROM beaker
+             | WHERE key IN (${List.fill(keys.size)("?").mkString(",")})
+           """.stripMargin
 
         // Execute the statement, and parse the returned ResultSet.
         val statement = con.prepareStatement(sql)
@@ -268,6 +307,32 @@ object SQL {
           val version = resultSet.getLong("version")
           val value   = resultSet.getString("value")
           buffer     += key -> new Revision(version, value)
+        }
+
+        resultSet.close()
+        statement.close()
+        buffer.toMap
+      }
+
+      override def range(con: Connection, after: Option[Key], limit: Int): Map[Key, Revision] = {
+        val sql =
+          s""" SELECT key, version, value
+             | FROM beaker
+             | WHERE key ${if (after.isDefined) "> ?"}
+             | LIMIT $limit
+           """.stripMargin
+
+        // Execute the statement, and parse the returned ResultSet.
+        val statement = con.prepareStatement(sql)
+        after.foreach(statement.setString(1, _))
+        val resultSet = statement.executeQuery()
+
+        val buffer = mutable.Buffer.empty[(Key, Revision)]
+        while (resultSet.next()) {
+          val key     = resultSet.getString("key")
+          val version = resultSet.getLong("version")
+          val value   = resultSet.getString("value")
+          buffer     += key -> Revision(version, value)
         }
 
         resultSet.close()

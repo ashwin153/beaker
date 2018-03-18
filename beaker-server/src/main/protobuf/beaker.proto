@@ -1,0 +1,163 @@
+syntax = "proto3";
+package beaker.server.protobuf;
+
+// A collection of keys.
+message Keys {
+
+  //
+  repeated string names = 1;
+
+}
+
+// A finite range of keys.
+message Range {
+
+  // Exclusive initial key.
+  string after = 1;
+
+  // Maximum number of keys.
+  uint32 limit = 2;
+
+}
+
+// A versioned value.
+message Revision {
+
+  // Version number. [0, ∞)
+  uint64 version = 1;
+
+  //
+  string value = 2;
+
+}
+
+// A collection of revisions.
+message Revisions {
+
+  //
+  map<string, Revision> entries = 1;
+
+}
+
+// A conditional update. Defaults to an empty transaction.
+message Transaction {
+
+  // Dependent versions.
+  map<string, uint64> depends = 1;
+
+  // Changes to apply if the dependencies remain unchanged.
+  map<string, Revision> changes = 2;
+
+}
+
+// A monotonically-increasing, globally-unique sequence number. Defaults to the zero ballot.
+message Ballot {
+
+  // Locally-unique number. [0, ∞)
+  uint32 round = 1;
+
+  // Globally-unique number.
+  uint64 id = 2;
+
+}
+
+//
+message Address {
+
+  // Hostname.
+  string name = 1;
+
+  // Port number. [0, 65535]
+  uint32 port = 2;
+
+}
+
+//
+message Cluster {
+
+  // Percentage of acceptors required to form a quorum. (0.5, 1.0]
+  double quorum = 1;
+
+  // Addresses of all acceptors.
+  repeated Address acceptors = 2;
+
+  // Addresses of all learners.
+  repeated Address learners = 3;
+
+}
+
+//
+message Configuration {
+
+  //
+  Ballot ballot = 1;
+
+  //
+  Cluster cluster = 2;
+
+}
+
+// A collection of non-conflicting transactions.
+message Proposal {
+
+  //
+  Ballot ballot = 1;
+
+  //
+  repeated Transaction applies = 2;
+
+  //
+  Transaction repairs = 3;
+
+  //
+  Configuration configuration = 4;
+
+}
+
+// A response indicating whether or not a request completed successfully.
+message Result {
+
+  //
+  bool successful = 1;
+
+}
+
+// An empty response.
+message Void {
+
+}
+
+// A distributed, transactional key-value store.
+service Beaker {
+
+  // Returns the latest revision of each key.
+  rpc Get(Keys) returns (Revisions);
+
+  // Returns the latest revisions of every key.
+  rpc Scan(stream Range) returns (stream Revisions);
+
+  // Returns the current view of the cluster.
+  rpc View(Void) returns (Cluster);
+
+  // Attempts to consistently update the cluster.
+  rpc Reconfigure(Cluster) returns (Result);
+
+  // Conditionally applies its changes if and only if it depends on the latest versions.
+  rpc Propose(Transaction) returns (Result);
+
+  // Makes a promise not to accept any proposal that conflicts with the proposal it returns and has
+  // a lower ballot than the proposal it receives. If a promise has been made to a newer proposal,
+  // its ballot is returned. If older proposals have already been accepted, they are merged together
+  // and returned. Otherwise, it returns the proposal it receives with the default ballot.
+  rpc Prepare(Proposal) returns (Proposal);
+
+  // Requests a vote for a proposal. Beakers cast a vote for a proposal if and only if a promise has
+  // not been made to a newer proposal.
+  rpc Accept(Proposal) returns (Result);
+
+  // Casts a vote for a proposal. Beakers commit the proposal's transactions and repairs of once a
+  // quorum of the acceptors in the proposal's configuration vote for it. If the proposal has a
+  // newer configuration, then update the current configuration.
+  rpc Learn(Proposal) returns (Void);
+
+}

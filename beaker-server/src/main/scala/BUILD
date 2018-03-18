@@ -2,10 +2,10 @@ scala_library(
     name='scala',
     sources=rglobs('*.scala'),
     dependencies=[
-        'beaker-cluster/src/main/scala',
+        'beaker-client/src/main/scala',
         'beaker-common/src/main/scala',
-        'beaker-core/src/main/protobuf',
-        'beaker-core/src/main/resources',
+        'beaker-server/src/main/protobuf',
+        'beaker-server/src/main/resources',
         '3rdparty/jvm:c3p0',
         '3rdparty/jvm:caffeine',
         '3rdparty/jvm:curator',

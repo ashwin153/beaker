@@ -22,7 +22,7 @@ trait Relation[-T] {
 object Relation {
 
   // All elements are related.
-  val Total: Relation[Any] = _ => true
+  val Total: Relation[Any] = (x, y) => true
 
   // All elements are unrelated.
   val Identity: Relation[Any] = (x, y) => x == y

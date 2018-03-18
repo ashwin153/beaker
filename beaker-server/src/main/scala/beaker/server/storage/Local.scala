@@ -1,12 +1,13 @@
-package beaker.core
+package beaker.server
 package storage
 
-import beaker.core
-import beaker.core.protobuf._
-
+import beaker.common.concurrent.Locking
+import beaker.server
+import beaker.server.protobuf._
 import com.github.benmanes.caffeine.{cache => caffeine}
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
@@ -18,29 +19,32 @@ object Local {
    * @param underlying Underlying map.
    */
   case class Database(
-    underlying: caffeine.Cache[Key, Revision]
-  ) extends core.Database {
+    underlying: mutable.SortedMap[Key, Revision]
+  ) extends server.Database with Locking {
 
-    override def read(keys: Set[Key]): Try[Map[Key, Revision]] =
-      Try(this.underlying.getAllPresent(keys.asJava).asScala.toMap)
+    override def read(keys: Set[Key]): Try[Map[Key, Revision]] = shared {
+      Try(this.underlying.filterKeys(keys.contains).toMap)
+    }
 
-    override def write(changes: Map[Key, Revision]): Try[Unit] =
-      Try(this.underlying.putAll(changes.asJava))
+    override def write(changes: Map[Key, Revision]): Try[Unit] = exclusive {
+      Try(this.underlying ++= changes)
+    }
+
+    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = shared {
+      val range = after match {
+        case Some(k) => this.underlying.iteratorFrom(k).drop(1)
+        case None => this.underlying.iterator
+      }
+
+      Try(range.take(limit).toMap)
+    }
 
     override def close(): Unit =
-      this.underlying.invalidateAll()
+      this.underlying.clear()
 
   }
 
   object Database {
-
-    /**
-     * Constructs an empty in-memory database.
-     *
-     * @return Empty database.
-     */
-    def apply(): Local.Database =
-      Local.Database(caffeine.Caffeine.newBuilder().build[Key, Revision]())
 
     /**
      * Constructs an in-memory database initialized with the specified items.
@@ -57,11 +61,8 @@ object Local {
      * @param initial Initial contents.
      * @return Initialized database.
      */
-    def apply(initial: Map[Key, Revision]): Local.Database = {
-      val database = Local.Database()
-      database.underlying.putAll(initial.asJava)
-      database
-    }
+    def apply(initial: Map[Key, Revision]): Local.Database =
+      Local.Database(mutable.SortedMap(initial.toSeq: _*))
 
   }
 
@@ -74,7 +75,7 @@ object Local {
   case class Cache(
     database: Database,
     underlying: caffeine.Cache[Key, Revision]
-  ) extends core.Cache {
+  ) extends server.Cache {
 
     override def fetch(keys: Set[Key]): Try[Map[Key, Revision]] =
       Try(this.underlying.getAllPresent(keys.asJava).asScala.toMap)

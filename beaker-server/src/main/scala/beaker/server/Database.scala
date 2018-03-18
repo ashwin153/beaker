@@ -1,7 +1,7 @@
-package beaker.core
+package beaker.server
 
-import beaker.core.Database.Conflicts
-import beaker.core.protobuf._
+import beaker.server.Database._
+import beaker.server.protobuf._
 
 import java.io.Closeable
 import scala.math.Ordering.Implicits._
@@ -13,7 +13,7 @@ import scala.util.{Failure, Try}
 trait Database extends Closeable {
 
   /**
-   * Returns the latest revision of the specified keys.
+   * Returns the revision of the specified keys.
    *
    * @param keys Keys to read.
    * @return Revision of each key.
@@ -27,6 +27,15 @@ trait Database extends Closeable {
    * @return Whether or not changes were applied.
    */
   def write(changes: Map[Key, Revision]): Try[Unit]
+
+  /**
+   * Returns the revisions of the first limit keys after, but not including, the specified key.
+   *
+   * @param after Exclusive initial key.
+   * @param limit Maximum number to return.
+   * @return Revisions of keys in range.
+   */
+  def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]]
 
   /**
    * Attempts to commit the transaction on the database. Transactions may be committed if and only

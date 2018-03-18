@@ -16,7 +16,7 @@ import scala.util.Try
  * @see https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf
  * @param relation Command relation.
  */
-case class Executor[T](relation: Relation[T]) extends Closeable {
+class Executor[T](relation: Relation[T]) extends Closeable {
 
   private[this] var epoch    : Long                         = 0L
   private[this] val horizon  : mutable.Map[Long, Condition] = mutable.Map.empty
@@ -89,6 +89,6 @@ object Executor {
    * @param relation Command relation.
    * @return Executor on relation.
    */
-  def apply[T]()(implicit relation: Relation[T]): Executor[T] = Executor[T](relation)
+  def apply[T]()(implicit relation: Relation[T]): Executor[T] = new Executor[T](relation)
 
 }

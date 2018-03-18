@@ -1,12 +1,10 @@
-package beaker.core
+package beaker.server
 package storage
 
-import beaker.core
-import beaker.core.protobuf._
+import beaker.server
+import beaker.server.protobuf._
 
-import pureconfig.loadConfigOrThrow
 import redis.clients.jedis.Jedis
-
 import java.nio.charset.Charset
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
@@ -24,7 +22,7 @@ object Redis {
     database: Database,
     client: Jedis,
     expiration: Duration
-  ) extends core.Cache {
+  ) extends server.Cache {
 
     override def fetch(keys: Set[Key]): Try[Map[Key, Revision]] = Try {
       val seq = keys.toSeq
@@ -35,7 +33,7 @@ object Redis {
 
     override def update(changes: Map[Key, Revision]): Try[Unit] = Try {
       val values = changes.mapValues(r => new String(r.toByteArray, Cache.Repr))
-      values foreach { case (k, v) => this.client.setex(k, this.expiry.toSeconds.toInt, v) }
+      values foreach { case (k, v) => this.client.setex(k, this.expiration.toSeconds.toInt, v) }
     }
 
     override def close(): Unit = {
@@ -62,15 +60,6 @@ object Redis {
       port: Int,
       expiration: Duration
     )
-
-    /**
-     * Constructs a [[Redis.Cache]] by loading the configuration from the classpath.
-     *
-     * @param database Underlying database.
-     * @return Classpath-configured [[Redis.Cache]].
-     */
-    def apply(database: Database): Redis.Cache =
-      Redis.Cache(database, loadConfigOrThrow[Config]("beaker.cache.redis"))
 
     /**
      * Constructs a [[Redis.Cache]] from the provided configuration.

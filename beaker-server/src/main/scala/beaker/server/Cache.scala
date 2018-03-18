@@ -1,6 +1,7 @@
-package beaker.core
+package beaker.server
 
-import beaker.core.protobuf._
+import beaker.common.util._
+import beaker.server.protobuf._
 
 import scala.util.{Failure, Success, Try}
 
@@ -28,6 +29,7 @@ trait Cache extends Database {
    * Applies the changes to the cache.
    *
    * @param changes Changes to apply.
+   * @return Whether or not the update was successful.
    */
   def update(changes: Map[Key, Revision]): Try[Unit]
 
@@ -35,13 +37,13 @@ trait Cache extends Database {
     fetch(keys) recover { case _ => Map.empty[Key, Revision] } flatMap { hits =>
       val misses = hits.keySet diff keys
       if (misses.nonEmpty) {
-        // Reload any cache misses from the underlying database.
-        this.database.read(misses) map  { changes =>
+        // If any keys missed cache, reload them from the database.
+        this.database.read(misses) map { changes =>
           update(changes)
           hits ++ changes
         }
       } else {
-        // Return the cache hits otherwise.
+        // Otherwise, return the cache hits.
         Success(hits)
       }
     }
@@ -49,7 +51,12 @@ trait Cache extends Database {
 
   override def write(changes: Map[Key, Revision]): Try[Unit] = {
     // Write to the database and then update the cache.
-    this.database.write(changes).flatMap(_ => this.update(changes))
+    this.database.write(changes).andThen(_ => this.update(changes))
+  }
+
+  override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = {
+    // Scan from the underlying database and avoid cache entirely.
+    this.database.scan(after, limit)
   }
 
   override def commit(transaction: Transaction): Try[Unit] = {

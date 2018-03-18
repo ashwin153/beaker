@@ -1,10 +1,9 @@
 package beaker.client
 
 import beaker.server.protobuf._
-
 import io.grpc.stub.StreamObserver
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
-
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -67,7 +66,7 @@ class Client(channel: ManagedChannel) {
    */
   def put(changes: Map[Key, Value]): Option[Map[Key, Version]] = {
     val latest = get(changes.keySet).mapValues(_.version)
-    val update = changes.keys map { k => k -> (latest.getOrElse(k, 0) + 1) }
+    val update = changes.keys map { k => k -> (latest.getOrElse(k, 0L) + 1) }
     if (cas(latest, changes)) Some(update.toMap) else None
   }
 
@@ -99,11 +98,11 @@ class Client(channel: ManagedChannel) {
    */
   def scan[U](f: Map[Key, Revision] => U, limit: Int = 10000): Future[Unit] = {
     val promise = Promise[Unit]()
-    var range = Range(limit = limit)
+    var range = Range(null, limit)
+    val server = new AtomicReference[StreamObserver[Range]]
 
     // Asynchronously scans the remote beaker and repairs the local beaker.
-    val beaker = BeakerGrpc.stub(this.channel)
-    val observer: StreamObserver[Range] = beaker.scan(new StreamObserver[Revisions] {
+    val observer = BeakerGrpc.stub(this.channel).scan(new StreamObserver[Revisions] {
       override def onError(throwable: Throwable): Unit =
         promise.failure(throwable)
 
@@ -113,11 +112,12 @@ class Client(channel: ManagedChannel) {
       override def onNext(revisions: Revisions): Unit = {
         f(revisions.entries)
         range = range.copy(after = revisions.entries.keys.max)
-        observer.onNext(range)
+        server.get().onNext(range)
       }
     })
 
     // Block until the local beaker is refreshed.
+    server.set(observer)
     observer.onNext(range)
     promise.future
   }
