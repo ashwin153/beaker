@@ -9,10 +9,16 @@ import scala.language.implicitConversions
  */
 trait Order[-T] extends Relation[T] {
 
+  /**
+   * Returns whether or not x is partially ordered before y if x and y are comparable.
+   *
+   * @param x An element.
+   * @param y Another element.
+   * @return Whether or not x is before y.
+   */
   def before(x: T, y: T): Option[Boolean]
 
-  override def related(x: T, y: T): Boolean = {
+  override def related(x: T, y: T): Boolean =
     before(x, y).exists(identity) || before(y, x).exists(identity)
-  }
 
 }
