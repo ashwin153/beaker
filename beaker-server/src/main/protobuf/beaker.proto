@@ -1,10 +1,10 @@
-syntax = "proto3";
+syntax = "proto2";
 package beaker.server.protobuf;
 
 // A collection of keys.
 message Keys {
 
-  //
+  // Names of keys.
   repeated string names = 1;
 
 }
@@ -13,10 +13,10 @@ message Keys {
 message Range {
 
   // Exclusive initial key.
-  string after = 1;
+  optional string after = 1;
 
-  // Maximum number of keys.
-  uint32 limit = 2;
+  // Maximum number of keys. [1, ∞)
+  required uint32 limit = 2 [default = 10000];
 
 }
 
@@ -24,17 +24,17 @@ message Range {
 message Revision {
 
   // Version number. [0, ∞)
-  uint64 version = 1;
+  required uint64 version = 1 [default = 0];
 
-  //
-  string value = 2;
+  // Value.
+  required string value = 2;
 
 }
 
 // A collection of revisions.
 message Revisions {
 
-  //
+  // Revisions of keys.
   map<string, Revision> entries = 1;
 
 }
@@ -54,29 +54,29 @@ message Transaction {
 message Ballot {
 
   // Locally-unique number. [0, ∞)
-  uint32 round = 1;
+  required uint32 round = 1 [default = 0];
 
   // Globally-unique number.
-  uint64 id = 2;
+  required uint64 id = 2 [default = 0];
 
 }
 
-//
+// A network location.
 message Address {
 
   // Hostname.
-  string name = 1;
+  required string name = 1;
 
   // Port number. [0, 65535]
-  uint32 port = 2;
+  required uint32 port = 2;
 
 }
 
-//
-message Cluster {
+// A network configuration.
+message Configuration {
 
   // Percentage of acceptors required to form a quorum. (0.5, 1.0]
-  double quorum = 1;
+  required double quorum = 1 [default = 0.51];
 
   // Addresses of all acceptors.
   repeated Address acceptors = 2;
@@ -86,39 +86,39 @@ message Cluster {
 
 }
 
-//
-message Configuration {
+// A versioned configuration.
+message View {
 
-  //
-  Ballot ballot = 1;
+  // Unique identifier.
+  required Ballot ballot = 1;
 
-  //
-  Cluster cluster = 2;
+  // Network configuration.
+  required Configuration configuration = 2;
 
 }
 
 // A collection of non-conflicting transactions.
 message Proposal {
 
-  //
-  Ballot ballot = 1;
+  // Unique identifier.
+  required Ballot ballot = 1;
 
-  //
+  // Transactions applied by the proposal.
   repeated Transaction applies = 2;
 
-  //
-  Transaction repairs = 3;
+  // Keys repaired by the proposal.
+  map<string, Revision> repairs = 3;
 
-  //
-  Configuration configuration = 4;
+  // Current network configuration.
+  required View view = 4;
 
 }
 
 // A response indicating whether or not a request completed successfully.
 message Result {
 
-  //
-  bool successful = 1;
+  // Request result.
+  required bool successful = 1;
 
 }
 
@@ -136,11 +136,11 @@ service Beaker {
   // Returns the latest revisions of every key.
   rpc Scan(stream Range) returns (stream Revisions);
 
-  // Returns the current view of the cluster.
-  rpc View(Void) returns (Cluster);
+  // Returns the current view of the network configuration.
+  rpc Network(Void) returns (Configuration);
 
-  // Attempts to consistently update the cluster.
-  rpc Reconfigure(Cluster) returns (Result);
+  // Attempts to consistently update the network configuration.
+  rpc Reconfigure(Configuration) returns (Result);
 
   // Conditionally applies its changes if and only if it depends on the latest versions.
   rpc Propose(Transaction) returns (Result);

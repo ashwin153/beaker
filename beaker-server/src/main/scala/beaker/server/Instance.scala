@@ -7,8 +7,8 @@ import beaker.server.protobuf._
 
 import io.grpc.ServerBuilder
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.Future
 
 /**
  * A Beaker server.
@@ -31,11 +31,15 @@ class Instance(beaker: Beaker, seed: Option[Client]) {
 
     seed foreach { remote =>
       ensure {
+        println("HELLO")
+
         // Ensure the instance is added as a learner.
         val cluster = remote.view()
         cluster.addLearners(this.beaker.address)
         remote.reconfigure(cluster)
       }
+
+      println("HELLO2")
 
       ensure {
         // Bootstrap the instance from a quorum of replicas.

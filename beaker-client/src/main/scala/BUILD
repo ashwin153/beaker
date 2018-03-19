@@ -2,6 +2,7 @@ scala_library(
     name='scala',
     sources=rglobs('*.scala'),
     dependencies=[
+        'beaker-common/src/main/scala',
         'beaker-server/src/main/protobuf',
         '3rdparty/jvm:grpc-netty',
     ],

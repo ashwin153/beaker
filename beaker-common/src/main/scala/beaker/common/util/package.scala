@@ -2,9 +2,9 @@ package beaker.common
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.Ordering.Implicits._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-package object util {
+package object util extends Retry {
 
   implicit class MapOps[A, B](x: Map[A, B]) {
 
@@ -39,6 +39,17 @@ package object util {
      * @return Side-effecting try.
      */
     def andThen[U](f: T => U): Try[T] = x map { t => f(t); t }
+
+  }
+
+  implicit class OptionOps[T](x: Option[T]) {
+
+    /**
+     * Converts the option to a try.
+     *
+     * @return Try.
+     */
+    def toTry: Try[T] = Try(x) collect { case Some(v) => v }
 
   }
 
@@ -81,32 +92,5 @@ package object util {
     def <>(y: T): Boolean = order.before(x, y).isEmpty
 
   }
-
-  /**
-   * Retries until the specified task completes successfully.
-   *
-   * @param f Task.
-   * @param ec Implicit execution context.
-   * @return Successful result.
-   */
-  def ensure[T](f: => Future[T])(implicit ec: ExecutionContext): Future[T] =
-    f recoverWith { case _ => ensure(f) }
-
-  /**
-   * Retries until the specified task completes successfully.
-   *
-   * @param f Task.
-   * @return Successful result.
-   */
-  def ensure[T](f: => Try[T]): Try[T] =
-    f recoverWith { case _ => ensure(f) }
-
-  /**
-   * Retries until the specified condition is true.
-   *
-   * @param f Condition.
-   */
-  def ensure(f: => Boolean): Unit =
-    if (!f) ensure(f)
 
 }
