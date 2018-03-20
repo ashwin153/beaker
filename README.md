@@ -13,15 +13,10 @@ read-your-write consistency, and tunable availability and partition tolerance.
 # Database
 beaker/                             https://github.com/ashwin153/beaker
 +---beaker-assets/                  Documentation, results, and graphics.
-+---beaker-benchmark/               Performance tests.
-+---beaker-cluster/                 Service discovery.
++---beaker-client/                  Client library.
 +---beaker-common/                  Tools.
-+---beaker-core/                    Distributed database.
++---beaker-server/                  Database server.
 +---build-support/                  Pants plugins and configuration.
-
-# YCSB Benchmarks
-ycsb/                               https://github.com/ashwin153/YCSB
-+---beaker                          Beaker integration.
 ```
 
 # Requirements

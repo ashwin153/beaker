@@ -140,10 +140,7 @@ class Client(channel: ManagedChannel) {
   }
 
   /**
-   * Makes a promise not to accept any proposal that conflicts with the proposal it returns and has
-   * a lower ballot than the proposal it receives. If a promise has been made to a newer proposal,
-   * its ballot is returned. If older proposals have already been accepted, they are merged together
-   * and returned. Otherwise, it returns the proposal it receives with the default ballot.
+   * Requests a promise for a proposal.
    *
    * @param proposal Proposal to prepare.
    * @return Promise.
@@ -153,8 +150,7 @@ class Client(channel: ManagedChannel) {
   }
 
   /**
-   * Requests a vote for a proposal. A vote is cast for a proposal if and only if a promise has
-   * not been made to a newer proposal.
+   * Requests a vote for a proposal.
    *
    * @param proposal Proposal to vote for.
    * @return Whether or not a vote was cast.
@@ -164,8 +160,7 @@ class Client(channel: ManagedChannel) {
   }
 
   /**
-   * Casts a vote for a proposal. A proposal is committed once a majority of acceptors in its
-   * network configuration have voted for it.
+   * Casts a vote for a proposal.
    *
    * @param proposal Proposal to commit.
    * @return Whether or not a vote was successfully cast.
