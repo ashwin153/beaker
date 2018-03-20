@@ -19,7 +19,7 @@ trait Locking {
    * @param block Critical section; side-effect free.
    * @return Result of block.
    */
-  def shared[T](block: => T): T = {
+  protected[this] def shared[T](block: => T): T = {
     val stamp = this.lock.readLock()
     try {
       block
@@ -35,7 +35,7 @@ trait Locking {
    * @param block Critical section.
    * @return Result of block.
    */
-  def exclusive[T](block: => T): T = {
+  protected[this] def exclusive[T](block: => T): T = {
     val stamp = this.lock.writeLock()
     try {
       block
@@ -52,7 +52,7 @@ trait Locking {
    * @param block Critical section; side-effect free.
    * @return Result of block.
    */
-  def optimistic[T](block: => T): T = {
+  protected[this] def optimistic[T](block: => T): T = {
     val stamp = this.lock.tryOptimisticRead()
     val value = block
     if (!this.lock.validate(stamp)) shared(block) else value

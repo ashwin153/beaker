@@ -5,6 +5,7 @@ import beaker.server.protobuf.Address
 
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits._
 import scala.util.{Random, Try}
 
 /**
@@ -13,6 +14,15 @@ import scala.util.{Random, Try}
  * @param members Cluster member.
  */
 class Cluster(members: mutable.Map[Address, Client]) extends Locking {
+
+  /**
+   * Returns the number of members in the cluster.
+   *
+   * @return Number of members.
+   */
+  def size: Int = shared {
+    this.members.size
+  }
 
   /**
    * Adds the member to the cluster.
@@ -40,6 +50,13 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
   def update(members: Seq[Address]): Unit = {
     this.members.keys.filterNot(members.contains).foreach(leave)
     members.filterNot(this.members.contains).foreach(join)
+  }
+
+  /**
+   * Closes all members of the cluster.
+   */
+  def close(): Unit = {
+    this.members.keys.foreach(leave)
   }
 
   /**
@@ -129,15 +146,7 @@ object Cluster {
    * @param members Initial members.
    * @return Initialized cluster.
    */
-  def apply(members: Seq[Address]): Cluster = Cluster(members: _*)
-
-  /**
-   * Constructs a cluster initialized with the specified members.
-   *
-   * @param members Initial members.
-   * @return Initialized cluster.
-   */
-  def apply(members: Address*): Cluster = {
+  def apply(members: Seq[Address]): Cluster = {
     val cluster = Cluster.empty
     members.foreach(cluster.join)
     cluster

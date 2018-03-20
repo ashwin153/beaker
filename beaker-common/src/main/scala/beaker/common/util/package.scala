@@ -1,12 +1,25 @@
 package beaker.common
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.mutable
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits._
+import scala.language.implicitConversions
 import scala.math.Ordering.Implicits._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 package object util extends Retry {
 
+  implicit def mmap2map[A, B](x: mutable.Map[A, B]): Map[A, B] = x.toMap
+  implicit def mmap2ops[A, B](x: mutable.Map[A, B]): MapOps[A, B] = MapOps(x.toMap)
+
   implicit class MapOps[A, B](x: Map[A, B]) {
+
+    /**
+     * Returns the inverse mapping.
+     *
+     * @return Inverted map.
+     */
+    def invert: Map[B, Set[A]] = x.groupBy(_._2).mapValues(_.keySet)
 
     /**
      * Returns the largest value for each key present in either map.
@@ -30,6 +43,46 @@ package object util extends Retry {
 
   }
 
+  implicit class MutableMapOps[A, B](x: mutable.Map[A, B]) {
+
+    /**
+     * Removes all entries that satisfy the predicate and returns their values.
+     *
+     * @param f Predicate.
+     * @return Values of removed keys.
+     */
+    def remove(f: (A, B) => Boolean): Map[A, B] = {
+      val removed = x.filter(f.tupled)
+      x --= removed.keys
+      removed.toMap
+    }
+
+    /**
+     * Removes all keys that satisfy the predicate and returns their values.
+     *
+     * @param f Predicate.
+     * @return Values of removed keys.
+     */
+    def removeKeys(f: A => Boolean): Map[A, B] = {
+      val removed = x.filterKeys(!f(_))
+      x --= removed.keys
+      removed.toMap
+    }
+
+  }
+
+  implicit class SeqOps[T](x: Seq[T]) {
+
+    /**
+     * Removes all occurrences of the element from the sequence.
+     *
+     * @param y An element.
+     * @return Filtered sequence.
+     */
+    def remove(y: T): Seq[T] = x.filterNot(_ != y)
+
+  }
+
   implicit class TryOps[T](x: Try[T]) {
 
     /**
@@ -39,6 +92,20 @@ package object util extends Retry {
      * @return Side-effecting try.
      */
     def andThen[U](f: T => U): Try[T] = x map { t => f(t); t }
+
+    /**
+     * Converts the try to a future.
+     *
+     * @return Asynchronous try.
+     */
+    def toFuture: Future[T] = Future.fromTry(x)
+
+    /**
+     * Converts the try to a unit.
+     *
+     * @return Unit try.
+     */
+    def toUnit: Try[Unit] = x.map(_ => ())
 
   }
 

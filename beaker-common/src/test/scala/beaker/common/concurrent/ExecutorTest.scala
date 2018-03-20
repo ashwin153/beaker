@@ -1,11 +1,13 @@
-package beaker.core
+package beaker.common.concurrent
 
-import beaker.common.relation._
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import beaker.common.util._
+
 import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FunSuite, Matchers}
+
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 import scala.util.Try
 
 @RunWith(classOf[JUnitRunner])
@@ -23,7 +25,7 @@ class ExecutorTest extends FunSuite with Matchers with ScalaFutures {
     scheduled.countDown()
 
     // X will fail if and only if it is strictly executed before Y.
-    whenReady(x)(r => r shouldBe false)
+    whenReady(x)(_ shouldBe false)
     executor.close()
   }
 
@@ -39,8 +41,8 @@ class ExecutorTest extends FunSuite with Matchers with ScalaFutures {
     scheduled.countDown()
 
     // X and Y will both succeed if and only if they are executed concurrently.
-    whenReady(x)(r => r shouldEqual true)
-    whenReady(y)(r => r shouldEqual true)
+    whenReady(x)(_ shouldEqual true)
+    whenReady(y)(_ shouldEqual true)
     executor.close()
   }
 

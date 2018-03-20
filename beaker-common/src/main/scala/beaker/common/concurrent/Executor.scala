@@ -16,7 +16,7 @@ import scala.util.Try
  * @see https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf
  * @param relation Command relation.
  */
-class Executor[T](relation: Relation[T]) extends Closeable {
+class Executor[T](relation: Relation[T]) {
 
   private[this] var epoch    : Long                         = 0L
   private[this] val horizon  : mutable.Map[Long, Condition] = mutable.Map.empty
@@ -40,7 +40,7 @@ class Executor[T](relation: Relation[T]) extends Closeable {
     }
   }
 
-  override def close(): Unit = {
+  def close(): Unit = {
     this.clock.cancel()
     this.barrier.await()
   }

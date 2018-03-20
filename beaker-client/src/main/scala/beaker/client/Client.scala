@@ -93,14 +93,10 @@ class Client(channel: ManagedChannel) {
    * @return Whether or not the changes were applied.
    */
   def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Try[Map[Key, Version]] = {
-    // Implicitly depend on the initial version of every key that is changed but not depended on.
     val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
-
-    // Propose a transaction and return the updated versions if successful.
-    Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
-      .filter(_.successful)
-      .map(_ => wset.mapValues(_.version))
+    val result = Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
+    result.filter(_.successful).map(_ => wset.mapValues(_.version))
   }
 
   /**
@@ -130,8 +126,8 @@ class Client(channel: ManagedChannel) {
    * @param configuration Updated configuration.
    * @return Whether or not the reconfiguration was successful.
    */
-  def reconfigure(configuration: Configuration): Boolean = {
-    BeakerGrpc.blockingStub(this.channel).reconfigure(configuration).successful
+  def reconfigure(configuration: Configuration): Try[Unit] = {
+    Try(BeakerGrpc.blockingStub(this.channel).reconfigure(configuration)).filter(_.successful).toUnit
   }
 
   /**
@@ -139,8 +135,8 @@ class Client(channel: ManagedChannel) {
    *
    * @return Network configuration.
    */
-  def network(): Configuration = {
-    BeakerGrpc.blockingStub(this.channel).network(Void())
+  def network(): Try[Configuration] = {
+    Try(BeakerGrpc.blockingStub(this.channel).network(Void()))
   }
 
   /**
@@ -152,7 +148,7 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to prepare.
    * @return Promise.
    */
-  def prepare(proposal: Proposal): Try[Proposal] = {
+  private[beaker] def prepare(proposal: Proposal): Try[Proposal] = {
     Try(BeakerGrpc.blockingStub(this.channel).prepare(proposal))
   }
 
@@ -163,8 +159,8 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to vote for.
    * @return Whether or not a vote was cast.
    */
-  def accept(proposal: Proposal): Try[Unit] = {
-    Try(BeakerGrpc.blockingStub(this.channel).accept(proposal)).filter(_.successful).map(_ => ())
+  private[beaker] def accept(proposal: Proposal): Try[Unit] = {
+    Try(BeakerGrpc.blockingStub(this.channel).accept(proposal)).filter(_.successful).toUnit
   }
 
   /**
@@ -174,8 +170,8 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to commit.
    * @return Whether or not a vote was successfully cast.
    */
-  def learn(proposal: Proposal): Try[Unit] = {
-    Try(BeakerGrpc.blockingStub(this.channel).learn(proposal)).map(_ => ())
+  private[beaker] def learn(proposal: Proposal): Try[Unit] = {
+    Try(BeakerGrpc.blockingStub(this.channel).learn(proposal)).toUnit
   }
 
 }

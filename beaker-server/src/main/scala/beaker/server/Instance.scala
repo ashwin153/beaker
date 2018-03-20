@@ -1,25 +1,28 @@
-package beaker.server.service
+package beaker.server
 
-import beaker.client.Client
+import beaker.client.{Client, Cluster}
 import beaker.common.util._
-import beaker.server.Beaker
 import beaker.server.protobuf._
 
 import io.grpc.ServerBuilder
 
 import scala.concurrent.ExecutionContext.Implicits._
-import scala.concurrent.Future
 
 /**
  * A Beaker server.
  *
+ * @param address Network location.
  * @param beaker Underlying beaker.
  * @param seed Optional seed.
  */
-class Instance(beaker: Beaker, seed: Option[Client]) {
+class Instance(
+  address: Address,
+  beaker: Beaker,
+  seed: Option[Client]
+) {
 
   private[this] val server = ServerBuilder
-    .forPort(this.beaker.address.port)
+    .forPort(this.address.port)
     .addService(BeakerGrpc.bindService(this.beaker, global))
     .build()
 
@@ -31,28 +34,20 @@ class Instance(beaker: Beaker, seed: Option[Client]) {
 
     seed foreach { remote =>
       ensure {
-        println("HELLO")
-
         // Ensure the instance is added as a learner.
-        val cluster = remote.view()
-        cluster.addLearners(this.beaker.address)
-        remote.reconfigure(cluster)
+        remote.network().map(config => remote.reconfigure(config.addLearners(this.address)))
       }
-
-      println("HELLO2")
 
       ensure {
         // Bootstrap the instance from a quorum of replicas.
-        val cluster = remote.view()
-        val clients = cluster.acceptors.map(Client.apply)
-        Future.sequence(clients.map(_.scan(this.beaker.repair)))
+        remote.network().map(config => Cluster(config.acceptors)).toFuture flatMap { c =>
+          c.quorumAsync(_.scan(this.beaker.archive.write)) andThen { case _ => c.close() }
+        }
       }
 
       ensure {
         // Ensure the instance is added as an acceptor.
-        val cluster = remote.view()
-        cluster.addAcceptors(this.beaker.address)
-        remote.reconfigure(cluster)
+        remote.network().map(config => remote.reconfigure(config.addAcceptors(this.address)))
       }
     }
   }
@@ -63,13 +58,14 @@ class Instance(beaker: Beaker, seed: Option[Client]) {
   def close(): Unit = {
     ensure {
       // Remove the instance from the configuration.
-      val cluster   = this.beaker.router.configuration.getCluster
-      val learners  = cluster.learners.filterNot(_ == this.beaker.address)
-      val acceptors = cluster.acceptors.filterNot(_ == this.beaker.address)
-      val updated   = cluster.copy(acceptors = acceptors, learners = learners)
+      val configuration = this.beaker.proposer.configuration
+      val acceptors = configuration.acceptors.remove(this.address)
+      val learners = configuration.learners.remove(this.address)
+      val updated  = configuration.copy(acceptors = acceptors, learners = learners)
 
       // Reconfigure the instance out of the configuration.
-      this.beaker.router.random(_.reconfigure(updated)).filter(_.successful)
+      val cluster = Cluster(configuration.acceptors)
+      cluster.random(_.reconfigure(updated)) andThen { case _ => cluster.close() }
     } map { _ =>
       // Shutdown the instance.
       this.server.shutdown()
@@ -87,7 +83,9 @@ object Instance {
    * @param beaker Underlying beaker.
    * @return Server instance.
    */
-  def initial(beaker: Beaker): Instance = new Instance(beaker, None)
+  def apply(address: Address, beaker: Beaker): Instance = {
+    new Instance(address, beaker, None)
+  }
 
   /**
    * Constructs an instance that serves the specified beaker and bootstraps itself using the
@@ -98,6 +96,8 @@ object Instance {
    * @param seed Seed beaker.
    * @return Server instance.
    */
-  def apply(beaker: Beaker, seed: Client): Instance = new Instance(beaker, Some(seed))
+  def apply(address: Address, beaker: Beaker, seed: Client): Instance = {
+    new Instance(address, beaker, Some(seed))
+  }
 
 }

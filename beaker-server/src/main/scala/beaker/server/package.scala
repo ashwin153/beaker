@@ -19,9 +19,9 @@ package object server {
     x.version compare y.version
   }
 
-  // Configurations are uniquely identified and totally ordered by their ballot.
-  implicit val configurationOrdering: Ordering[Configuration] = (x, y) => {
-    ballotOrdering.compare(x.getBallot, y.getBallot)
+  // Views are uniquely identified and totally ordered by their ballot.
+  implicit val viewOrdering: Ordering[View] = (x, y) => {
+    ballotOrdering.compare(x.ballot, y.ballot)
   }
 
   // Transactions are related if either reads or writes a key that the other writes.
@@ -31,9 +31,12 @@ package object server {
     xr.intersect(yw).nonEmpty || yr.intersect(xw).nonEmpty || xw.intersect(yw).nonEmpty
   }
 
-  // Proposals are partially ordered by their ballot whenever their transactions conflict.
+  // Proposals are partially ordered by their view and by ballot when their transactions conflict.
   implicit val proposalOrder: Order[Proposal] = (x, y) => {
-    x.applies.find(t => y.applies.exists(_ ~ t)).map(_ => x.getBallot <= y.getBallot)
+    if (x.view == y.view)
+      x.applies.find(t => y.applies.exists(_ ~ t)).map(_ => x.ballot <= y.ballot)
+    else
+      Some(x.view < y.view)
   }
 
   implicit class TransactionOps(x: Transaction) {
@@ -58,12 +61,12 @@ package object server {
      * @return Whether or not they match.
      */
     def matches(y: Proposal): Boolean =
-      x.applies == y.applies && x.configuration == y.configuration
+      x.applies == y.applies && x.view == y.view
 
     /**
      * Merges the older proposal into the newer proposal by discarding all transactions in the older
-     * proposal that conflict with transactions in the newer proposal are discarded and merging their
-     * repairs.
+     * proposal that conflict with transactions in the newer proposal are discarded and merging
+     * their repairs.
      *
      * @param y A proposal.
      * @return Union of proposals.
@@ -71,9 +74,8 @@ package object server {
     def merge(y: Proposal): Proposal = {
       val (latest, oldest) = if (x <| y) (y, x) else (x, y)
       val applies = latest.applies ++ oldest.applies.filterNot(t => latest.applies.exists(_ ~ t))
-      val repairs = latest.getRepairs merge oldest.getRepairs
-      val configuration = latest.getConfiguration max oldest.getConfiguration
-      latest.copy(applies = applies, repairs = Some(repairs), configuration = Some(configuration))
+      val repairs = latest.repairs maximum oldest.repairs
+      latest.copy(applies = applies, repairs = repairs)
     }
 
   }

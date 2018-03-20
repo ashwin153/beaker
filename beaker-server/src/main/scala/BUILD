@@ -9,10 +9,12 @@ scala_library(
         '3rdparty/jvm:c3p0',
         '3rdparty/jvm:caffeine',
         '3rdparty/jvm:curator',
+        '3rdparty/jvm:grpc-netty',
         '3rdparty/jvm:jedis',
         scoped('3rdparty/jvm:mysql', scope='runtime'),
         scoped('3rdparty/jvm:postgres', scope='runtime'),
         '3rdparty/jvm:pureconfig',
+        '3rdparty/jvm:slf4j-simple',
     ],
     provides=artifact(
         org='com.madavan',
