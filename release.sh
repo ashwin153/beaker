@@ -4,9 +4,10 @@
 #                        https://github.com/ashwin153/beaker/wiki/Release                          #
 ####################################################################################################
 targets=(
-  "beaker-cluster/src/main/scala"
-  "beaker-core/src/main/scala"
-  "beaker-core/src/main/thrift"
+  "beaker-client/src/main/scala"
+  "beaker-common/src/main/scala"
+  "beaker-server/src/main/protobuf"
+  "beaker-server/src/main/scala"
 )
 
 artifacts=(

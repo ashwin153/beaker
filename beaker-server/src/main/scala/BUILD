@@ -8,7 +8,6 @@ scala_library(
         'beaker-server/src/main/resources',
         '3rdparty/jvm:c3p0',
         '3rdparty/jvm:caffeine',
-        '3rdparty/jvm:curator',
         '3rdparty/jvm:grpc-netty',
         '3rdparty/jvm:jedis',
         scoped('3rdparty/jvm:mysql', scope='runtime'),
@@ -18,7 +17,7 @@ scala_library(
     ],
     provides=artifact(
         org='com.madavan',
-        name='beaker-core_2.12',
+        name='beaker-server_2.12',
         repo=public,
         publication_metadata=describe,
     ),

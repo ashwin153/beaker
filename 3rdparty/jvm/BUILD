@@ -1,6 +1,6 @@
 # Ammonite
 jar_library(name='ammonite', jars=[
-    jar(org='com.lihaoyi', name='ammonite_2.12.1', rev='1.0.2'),
+    jar(org='com.lihaoyi', name='ammonite_2.12.1', rev='1.0.5'),
 ])
 
 # C3P0
@@ -11,22 +11,6 @@ jar_library(name='c3p0', jars=[
 # Caffeine
 jar_library(name='caffeine', jars=[
     jar(org='com.github.ben-manes.caffeine', name='caffeine', rev='2.5.5'),
-])
-
-# Config
-jar_library(name='config', jars=[
-    jar(org='com.typesafe', name='config', rev='1.3.1'),
-])
-
-# Curator
-jar_library(name='curator', dependencies=[':zookeeper'], jars=[
-    jar(org='org.apache.curator', name='curator-framework', rev='4.0.0', excludes=[exclude('org.apache.zookeeper')]),
-    jar(org='org.apache.curator', name='curator-recipes', rev='4.0.0', excludes=[exclude('org.apache.zookeeper')]),
-])
-
-# Curator Test
-jar_library(name='curator-test', jars=[
-    jar(org='org.apache.curator', name='curator-test', rev='4.0.0'),
 ])
 
 # gRPC Netty
@@ -120,14 +104,4 @@ jar_library(name='scalatest', dependencies=[':scala-library', ':scala-reflect'],
 # SLF4J
 jar_library(name='slf4j-simple', jars=[
     jar(org='org.slf4j', name='slf4j-simple', rev='1.7.25'),
-])
-
-# Thrift
-jar_library(name='thrift', jars=[
-    jar(org='org.apache.thrift', name='libthrift', rev='0.11.0'),
-])
-
-# ZooKeeper
-jar_library(name='zookeeper', jars=[
-    jar(org='org.apache.zookeeper', name='zookeeper', rev='3.4.10'),
 ])
