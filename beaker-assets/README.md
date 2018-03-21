@@ -1,0 +1,10 @@
+# References
+- L.Lamport. [Paxos Made Simple](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf)
+- I. Moraru, D. G. Anderson, M. Kaminsky. [There Is More Consensus in Egalitarian Parliaments](https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf)
+- L. Lamport. [Generalized Consensus and Paxos](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf)
+- D. Peng, F. Dabek. [Large-scale Incremental Processing Using Distributed Transactions and Notifications](http://cloudgroup.neu.edu.cn/papers/model/incrprocess_osdi_2010.pdf)
+- F. Llirbat, D. Shasha, E. Simon, P. Valduriez. [Transaction Chopping: Algorithms and Performances Studies](https://hal.inria.fr/inria-00074147/document)
+- M. S. Ardekani, P. Sutra, M. Shapiro. [Non-Monotonic Snapshot Isolation: Scalable and Strong Consistency for Geo-Replicated Transactional Systems](https://pages.lip6.fr/Marc.Shapiro/papers/NMSI-SRDS-2013.pdf)
+- K. Ousterhout, P. Wendell, M. Zaharia, I. Stoica. [Sparrow: Distributed, Low Latency Scheduling](https://cs.stanford.edu/~matei/papers/2013/sosp_sparrow.pdf)
+- P. Hunt, M. Konar, F. P. Junqueira, B. Reed. [ZooKeeper: Wait-Free Coordination for Internet-Scale Systems](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf)
+- J. C. Corbett, J. Dean, M. Epstein, et al. [Spanner: Google’s Globally-Distributed Database](https://static.googleusercontent.com/media/research.google.com/en//archive/spanner-osdi2012.pdf)
