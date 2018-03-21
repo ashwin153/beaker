@@ -3,8 +3,7 @@ package beaker.common.util
 import scala.language.implicitConversions
 
 /**
- * A partial ordering. Orders are reflexive (x <| x) and anti-symmetric (x <| y -> y |> x), but,
- * unlike their mathematical counterparts, may not be transitive (x <| y, y <| z -> x <| z).
+ * A partial ordering. Orders are anti-symmetric (x <| y -> y |> x).
  */
 trait Order[-T] {
 

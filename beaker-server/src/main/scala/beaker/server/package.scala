@@ -34,7 +34,7 @@ package object server {
   // Proposals are partially ordered by their view and by ballot when their transactions conflict.
   implicit val proposalOrder: Order[Proposal] = (x, y) => {
     if (x.view == y.view)
-      x.applies.find(t => y.applies.exists(_ ~ t)).map(_ => x.ballot <= y.ballot)
+      x.applies.find(t => y.applies.exists(_ ~ t)).map(_ => x.ballot < y.ballot)
     else
       Some(x.view < y.view)
   }

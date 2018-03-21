@@ -3,8 +3,7 @@ package beaker.common.util
 import scala.language.implicitConversions
 
 /**
- * A binary relation. Relations are reflexive (x ~ x) and symmetric (x ~ y -> y ~ x), but not
- * necessarily transitive (x ~ y, y ~ z -> x ~ z).
+ * A binary relation. Relations are reflexive (x ~ x) and symmetric (x ~ y -> y ~ x).
  */
 trait Relation[-T] {
 

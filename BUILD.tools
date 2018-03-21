@@ -1,17 +1,11 @@
 ####################################################################################################
-#                                            Ammonite                                              # 
-#                 https://github.com/foursquare/fsqio/blob/master/BUILD.opensource                 #
-####################################################################################################
-target(name='ammonite', dependencies=['3rdparty/jvm:ammonite'])
-
-####################################################################################################
 #                                              Scala                                               #
 #                              https://www.pantsbuild.org/scala.html                               #
 ####################################################################################################
 target(name='scalac', dependencies=['3rdparty/jvm:scala-compiler'])
 target(name='scala-library', dependencies=['3rdparty/jvm:scala-library'])
 target(name='scala-reflect', dependencies=['3rdparty/jvm:scala-reflect'])
-target(name='scala-repl', dependencies=[':ammonite'])
+target(name='scala-repl', dependencies=['3rdparty/jvm:ammonite'])
 
 ####################################################################################################
 #                                            ScalaPB                                               #

@@ -13,11 +13,11 @@ import scala.util.{Failure, Success}
 /**
  * An asynchronous database that linearizes related commands.
  *
- * @param underlying Underlying database.
+ * @param database Underlying database.
  * @param executor Transaction executor.
  */
 case class Archive(
-  underlying: Database,
+  database: Database,
   executor: Executor[Command] = Executor()
 ) {
 
@@ -25,7 +25,7 @@ case class Archive(
    * Closes the database and the executor.
    */
   def close(): Unit = {
-    this.underlying.close()
+    this.database.close()
     this.executor.close()
   }
 
@@ -37,7 +37,7 @@ case class Archive(
    * @return Retrieved revisions.
    */
   def read(keys: Set[Key])(implicit ec: ExecutionContext): Future[Map[Key, Revision]] =
-    executor.submit(Read(keys))(_ => this.underlying.read(keys))
+    executor.submit(Read(keys))(_ => this.database.read(keys))
 
   /**
    * Asynchronously applies the specified changes.
@@ -57,7 +57,7 @@ case class Archive(
    * @return Whether or not the transaction was committed.
    */
   def commit(transaction: Transaction)(implicit ec: ExecutionContext): Future[Unit] =
-    executor.submit(Commit(transaction))(_ => this.underlying.commit(transaction))
+    executor.submit(Commit(transaction))(_ => this.database.commit(transaction))
 
   /**
    * Asynchronously scans the database. Scans do not prevent concurrent writes; therefore, they are
@@ -74,7 +74,7 @@ case class Archive(
       stream.onCompleted()
 
     override def onNext(range: Range): Unit =
-      executor.submit(Scan)(_ => underlying.scan(range.after, range.limit) match {
+      executor.submit(Scan)(_ => database.scan(range.after, range.limit) match {
         case Success(r) => Success(stream.onNext(Revisions(r)))
         case Failure(e) => Success(stream.onError(e))
       })
