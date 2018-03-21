@@ -132,7 +132,7 @@ package object util extends Retry {
 
   }
 
-  implicit class OrderOps[T](x: T)(implicit order: Order[T]) {
+  implicit class OrderOps[T](x: T)(implicit order: PartialOrder[T]) {
 
     /**
      * Returns whether or not x is partially ordered before y.

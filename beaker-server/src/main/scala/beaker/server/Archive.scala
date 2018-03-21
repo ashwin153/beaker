@@ -75,6 +75,7 @@ case class Archive(
 
     override def onNext(range: Range): Unit =
       executor.submit(Scan)(_ => database.scan(range.after, range.limit) match {
+        case Success(r) if r.isEmpty => Success(stream.onCompleted())
         case Success(r) => Success(stream.onNext(Revisions(r)))
         case Failure(e) => Success(stream.onError(e))
       })

@@ -1,9 +1,4 @@
-# Beaker
-Beaker is a distributed, transactional key-value store that is consistent and available. Beaker
-is ```N / 2``` fault tolerant but assumes that failures are fail-stop, messages are received in the
-order they were sent, and network partitions never occur
-
-## Background
+# Background
 A __database__ is a key-value store. Databases map keys to versioned values, called __revisions__. 
 Revisions are uniquely identified and totally ordered by their version. Keys may be *read* or
 *written* from a database. A __transaction__ depends on the versions of a set of keys, called its 
@@ -22,7 +17,7 @@ non-conflicting transactions. Second, beakers automatically repair replicas that
 revisions. Third, beakers may safely commit transactions as long as at least a majority is 
 operational.
 
-## Consensus
+# Consensus
 Beakers reach consensus on __proposals__. A proposal is a collection of non-conflicting 
 transactions. These transactions may conditionally apply changes or unconditionally repair stale
 revisions. Proposals are uniquely identified and totally ordered by a __ballot__ number. We say that
@@ -51,7 +46,7 @@ proposal is *accepted* if a majority of beakers vote for it. A beaker *learns* a
 majority of beakers vote for it. If a beaker learns a proposal, it commits its transactions and 
 repairs on its replica of the database.
 
-### Correctness
+## Correctness
 The proof of correctness relies on the assumption of *connectivity*, beakers are always connected to 
 all of their non-faulty peers, and the fact of *quorum intersection*, any majority of beakers will 
 contain at least one beaker in common.
@@ -101,12 +96,11 @@ database of size ```D``` such a proposal consumes ```D * (3 * N / 2 + N * N)``` 
 Furthermore, it prevents any proposals from being accepted in the interim.
 
 We can improve this solution by decoupling bootstrapping and consensus. A fresh beaker joins the 
-cluster as a partial member; it accepts and learns proposals, but cannot prepare them. Therefore,
-a partial member will vote for every proposal. A proposal is learned when a majority of when it 
-receives ```P + (N / 2 + 1)``` votes, where ```N``` is the size of the cluster and ```P``` is the 
-number of partial members at the time the proposal was prepared. The fresh beaker reads the contents 
-of the database from a quorum of voting members. It then assembles a repair transaction and commits 
-it on its replica. It then joins the cluster as a voting member. This approach consumes just 
-```D * N / 2``` in bandwidth and permits concurrent proposals.
+cluster as a partial member; it learns proposals, but is not involved in consensus prepare them. 
+Therefore, a partial member will vote for every proposal. A proposal is learned when a majority of 
+full members vote for it. The fresh beaker scans a quorum of full members, and repairs its own
+replica of the database with the returned values. In this manner, it is guaranteed to have the
+latest value of every key in the database. It then joins the cluster as a full member. This approach 
+consumes just ```D * N / 2``` in bandwidth and permits concurrent proposals.
 
 [1]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf

@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 /**
  * A partial ordering. Orders are anti-symmetric (x <| y -> y |> x).
  */
-trait Order[-T] {
+trait PartialOrder[-T] {
 
   /**
    * Returns whether or not x is partially ordered before y if x and y are comparable.

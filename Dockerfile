@@ -8,7 +8,7 @@ MAINTAINER Ashwin Madavan (ashwin.madavan@gmail.com)
 RUN apt-get update && apt-get -y install curl build-essential python python-dev openjdk-8-jdk
 
 ####################################################################################################
-#                                         Compile Caustic                                          #
+#                                         Compile Beaker                                           #
 #                    Automatically bootstraps Pants and downloads dependencies.                    #
 ####################################################################################################
 COPY . /beaker/

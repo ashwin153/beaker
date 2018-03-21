@@ -1,10 +1,10 @@
-# Client
+# Example
 ```scala
 import beaker.client._
 val client = Client("localhost", 9090)
 
 // Update.
-client.put("x" -> "hello")
+client.put("x", "hello")
 client.get("x")
 
 // Compare-and-set.
