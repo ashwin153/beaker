@@ -4,8 +4,6 @@
 - [Scalameter][2]
 
 # Contention
-- What happens to performance under contention? 
-
 We may theoretically model the number retries required to successfully execute a transaction as a
 [negative binomial distribution][3] in which the probability of success ```p``` is the *contention 
 probability*. Therefore, ```A ~ 1 + NB(p, 1)``` is the distribution of total attempts. We 
@@ -52,8 +50,7 @@ probability in this generalized scenario. However, the contention probability ca
 determined by increasing the number of threads in the Monte Carlo simulation. The following charts
 show how the contention probability and the average attempts grow with ```n``` and ```l```.
 
-<img src="https://github.com/ashwin153/beaker/blob/master/beaker-assets/images/benchmark-contention.png" width="49%" style="float: left"/>
-<img src="https://github.com/ashwin153/beaker/blob/master/beaker-assets/images/benchmark-attempts.png" width="49%" style="float: right"/>
+![Contention](../beaker-assets/images/benchmark-contention.png "Contention")![Attempts](../beaker-assets/images/benchmark-attempts.png "Attempts")
 
 [1]: https://www.ej-technologies.com/products/jprofiler/overview.html
 [2]: https://scalameter.github.io/
