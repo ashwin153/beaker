@@ -13,6 +13,7 @@ read-your-write consistency, and tunable availability and partition tolerance.
 # Database
 beaker/                             https://github.com/ashwin153/beaker
 +---beaker-assets/                  Documentation, results, and graphics.
++---beaker-benchmark/               Performance tests.
 +---beaker-client/                  Client library.
 +---beaker-common/                  Tools.
 +---beaker-server/                  Database server.
