@@ -1,6 +1,7 @@
 package beaker.benchmark.util
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object Measure {
 
@@ -10,7 +11,7 @@ object Measure {
    * @param f Function to test.
    * @return Latency.
    */
-  def latency[U](f: => U): Duration = {
+  def latency[T](f: => T): Duration = {
     val current = System.nanoTime()
     f
     Duration.fromNanos(System.nanoTime() - current)
@@ -20,11 +21,10 @@ object Measure {
    * Returns the number of times per second the function can be called.
    *
    * @param f Function to test.
-   * @return Throughput.
+   * @return Throughput per second.
    */
-  def throughput(f: => Int): Double = {
-    val current = System.nanoTime()
-    1E9 * f / (System.nanoTime() - current)
+  def throughput[T](f: => T): Double = {
+    (1 second) / latency(f)
   }
 
 }
