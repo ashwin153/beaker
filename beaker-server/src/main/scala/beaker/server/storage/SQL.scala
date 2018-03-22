@@ -5,6 +5,7 @@ import beaker.server
 import beaker.server.protobuf._
 
 import com.mchange.v2.c3p0.{ComboPooledDataSource, PooledDataSource}
+import pureconfig._
 
 import java.sql.{Connection, SQLException}
 import scala.collection.mutable
@@ -39,10 +40,10 @@ object SQL {
       this.pool.close()
 
     /**
-     * Performs the specified operation on the [[Connection]] and return the result.
+     * Performs the specified operation on the database and return the result.
      *
      * @param f JDBC operations.
-     * @throws SQLException If invalid operations or the database is inaccessible.
+     * @throws SQLException If the database is inaccessible.
      * @return Result of operations or an exception on failure.
      */
     def perform[R](f: Connection => R): Try[R] = {
@@ -71,15 +72,23 @@ object SQL {
      *
      * @param username Database username.
      * @param password Database password.
-     * @param dialect [[SQL.Dialect]] flavor.
+     * @param dialect SQL flavor.
      * @param url JDBC connection url.
      */
     case class Config(
       username: String = "root",
       password: String = "",
-      dialect: SQL.Dialect = Dialect.MySQL,
+      dialect: String = "mysql",
       url: String = "jdbc:mysql://localhost:3306/test?serverTimezone=UTC"
     )
+
+    /**
+     * Constructs a SQL database from the classpath configuration.
+     *
+     * @return Statically-configured SQL database.
+     */
+    def apply(): SQL.Database =
+      SQL.Database(loadConfigOrThrow[Config]("beaker.database.sql"))
 
     /**
      * Constructs a SQL database from the provided configuration.
@@ -87,16 +96,17 @@ object SQL {
      * @param config Configuration.
      * @return Dynamically-configured SQL database.
      */
-    def apply(config: Config): SQL.Database = {
+    def apply(config: SQL.Database.Config): SQL.Database = {
       // Setup a C3P0 connection pool.
       val pool = new ComboPooledDataSource()
+      val dialect = SQL.Dialect.forName(config.dialect)
       pool.setUser(config.username)
       pool.setPassword(config.password)
-      pool.setDriverClass(config.dialect.driver)
+      pool.setDriverClass(dialect.driver)
       pool.setJdbcUrl(config.url)
 
       // Construct the corresponding database.
-      SQL.Database(pool, config.dialect)
+      SQL.Database(pool, dialect)
     }
 
   }
@@ -150,6 +160,17 @@ object SQL {
   }
 
   object Dialect {
+
+    /**
+     * Constructs a SQL dialect for the specified name.
+     *
+     * @param name Dialect name.
+     * @return SQL dialect.
+     */
+    def forName(name: String): SQL.Dialect = name match {
+      case "mysql" => MySQL
+      case "postgresql" => PostgreSQL
+    }
 
     /**
      * A MySQL implementation.

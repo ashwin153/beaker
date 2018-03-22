@@ -22,3 +22,13 @@ scala_library(
         publication_metadata=describe,
     ),
 )
+
+jvm_binary(
+    name='bin',
+    basename='beaker-server',
+    source='beaker/server/Instance.scala',
+    main='beaker.server.Instance',
+    dependencies=[
+        'beaker-server/src/main/scala',
+    ],
+)

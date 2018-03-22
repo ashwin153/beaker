@@ -7,11 +7,11 @@ val client = Client("localhost", 9090)
 client.put("x", "hello")
 client.get("x")
 
-// Compare-and-set.
+// Compare-and-Set.
 client.cas(Map("x" -> 1L), Map("x" -> "goodbye"))
 client.get("x")
 
-// Iteration.
+// Asynchronous Iteration.
 client.foreach(println)
 
 // Cleanup.

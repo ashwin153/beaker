@@ -2,7 +2,7 @@ package beaker.server
 
 import beaker.common.util._
 import beaker.server.protobuf._
-
+import beaker.server.storage.{Local, Redis}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -77,6 +77,22 @@ trait Cache extends Database {
   override def close(): Unit = {
     // Propagate close to the underlying database.
     this.database.close()
+  }
+
+}
+
+object Cache {
+
+  /**
+   * Constructs a cache from the specified name and database.
+   *
+   * @param name Cache type.
+   * @param database Underlying database.
+   * @return Statically-configured cache.
+   */
+  def forName(name: String, database: Database): Cache = name match {
+    case "local" => Local.Cache(database)
+    case "redis" => Redis.Cache(database)
   }
 
 }

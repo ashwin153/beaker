@@ -4,7 +4,9 @@ package storage
 import beaker.server
 import beaker.server.protobuf._
 
+import pureconfig._
 import redis.clients.jedis.Jedis
+
 import java.nio.charset.Charset
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
@@ -19,7 +21,7 @@ object Redis {
    * @param client Redis client.
    */
   case class Cache(
-    database: Database,
+    database: server.Database,
     client: Jedis,
     expiration: Duration
   ) extends server.Cache {
@@ -49,7 +51,7 @@ object Redis {
     val Repr: Charset = Charset.forName("UTF-8")
 
     /**
-     * A [[Redis.Cache]] configuration.
+     * A Redis cache configuration.
      *
      * @param host Redis hostname.
      * @param port Redis port number.
@@ -62,13 +64,22 @@ object Redis {
     )
 
     /**
-     * Constructs a [[Redis.Cache]] from the provided configuration.
+     * Constructs a Redis cache from the classpath configuration.
+     *
+     * @param database Underlying database.
+     * @return Statically-configured cache.
+     */
+    def apply(database: server.Database): Redis.Cache =
+      Redis.Cache(database, loadConfigOrThrow[Config]("beaker.cache.redis"))
+
+    /**
+     * Constructs a Redis cache from the provided configuration.
      *
      * @param database Underlying database.
      * @param config Configuration.
-     * @return Dynamically-configured [[Redis.Cache]].
+     * @return Dynamically-configured cache.
      */
-    def apply(database: Database, config: Config): Redis.Cache =
+    def apply(database: server.Database, config: Config): Redis.Cache =
       Redis.Cache(database, new Jedis(config.host, config.port), config.expiration)
 
   }

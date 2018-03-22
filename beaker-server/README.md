@@ -77,7 +77,7 @@ but learned before ```A``` that changes a key ```k``` that is read by ```A```. B
  ```B``` cannot conflict with ```A```. Therefore, ```B``` must repair ```k```. By commutativity,
 ```A``` may still be committed.
 
-## Reconfiguration
+# Reconfiguration
 Each beaker is required to be connected to a majority of non-faulty peers in order to guarantee 
 correctness. However, this correctness condition is only valid when the cluster is static. In
 practical systems, beakers may join or leave the cluster arbitrarily as the cluster grows or shrinks 

@@ -5,10 +5,13 @@
 
 # Contention
 We may theoretically model the number retries required to successfully execute a transaction as a
-[negative binomial distribution][3] in which the probability of success ```p``` is the *contention 
-probability*. Therefore, ```A ~ 1 + NB(p, 1)``` is the distribution of total attempts. We 
-may then use known results about the negative binomial distribution, to make predictions 
-about the mean and variance of transaction execution latency under contention. 
+[negative binomial distribution][3]. A negative binomial distribution ```NB(p, r)``` measures the
+number of successful events each occurring with probability ```p``` before ```r``` failures are 
+encountered. In our case, ```p``` represents the contention probability, or the liklihood that a
+transaction contends with another and is forced to retry. Therefore, we may model the distribution
+of total attempts required to successfully commit a transaction by ```A ~ 1 + NB(p, 1)```. We may 
+then use known results about the negative binomial distribution, to make predictions about the mean 
+and variance of transaction execution latency under contention. 
 
 What exactly is this mysterious contention probability ```p```? Consider two sets ```X``` and 
 ```Y``` each containing ```l``` integers selected uniformly at random from the set ```[0, n)```. 

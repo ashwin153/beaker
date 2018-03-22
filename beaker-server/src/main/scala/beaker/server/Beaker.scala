@@ -49,7 +49,7 @@ case class Beaker(
   override def reconfigure(configuration: Configuration): Future[Result] = {
     // Asynchronously propose the new view.
     val view = View(this.proposer.next(), configuration)
-    val proposal = Proposal(this.proposer.next(), Seq.empty, Map.empty, view)
+    val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
     val task = Task(this.proposer.consensus(proposal))
     this.configuring += view -> task
     task.future map { _ => Result(true) } recover { case _ => Result(false) }

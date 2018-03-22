@@ -4,7 +4,10 @@ package storage
 import beaker.common.concurrent.Locking
 import beaker.server
 import beaker.server.protobuf._
+
 import com.github.benmanes.caffeine.{cache => caffeine}
+import pureconfig._
+
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -22,6 +25,10 @@ object Local {
     underlying: mutable.SortedMap[Key, Revision]
   ) extends server.Database with Locking {
 
+    override def close(): Unit = {
+      this.underlying.clear()
+    }
+
     override def read(keys: Set[Key]): Try[Map[Key, Revision]] = shared {
       Try(this.underlying.filterKeys(keys.contains).toMap)
     }
@@ -38,9 +45,6 @@ object Local {
 
       Try(range.take(limit).toMap)
     }
-
-    override def close(): Unit =
-      this.underlying.clear()
 
   }
 
@@ -73,7 +77,7 @@ object Local {
    * @param underlying In-memory cache.
    */
   case class Cache(
-    database: Database,
+    database: server.Database,
     underlying: caffeine.Cache[Key, Revision]
   ) extends server.Cache {
 
@@ -102,13 +106,22 @@ object Local {
     )
 
     /**
+     * Constructs an in-memory cache from the classpath configuration.
+     *
+     * @param database Underlying database.
+     * @return Statically-configured cache.
+     */
+    def apply(database: server.Database): Local.Cache =
+      Local.Cache(database, loadConfigOrThrow[Config]("beaker.cache.local"))
+
+    /**
      * Constructs an in-memory cache from the provided configuration.
      *
      * @param database Underlying database.
      * @param config Configuration.
-     * @return Configured cache.
+     * @return Dynamically-configured cache.
      */
-    def apply(database: Database, config: Config): Local.Cache =
+    def apply(database: server.Database, config: Config): Local.Cache =
       Local.Cache(database, caffeine.Caffeine.newBuilder()
         .weigher((k: Key, r: Revision) => sizeof(k) + sizeof(r))
         .maximumWeight(config.capacity)

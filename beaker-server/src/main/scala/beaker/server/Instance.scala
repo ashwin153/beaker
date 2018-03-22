@@ -3,10 +3,11 @@ package beaker.server
 import beaker.client.{Client, Cluster}
 import beaker.common.util._
 import beaker.server.protobuf._
-
 import io.grpc.ServerBuilder
-
+import java.net.InetAddress
+import pureconfig._
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.duration.Duration
 
 /**
  * A Beaker server.
@@ -49,6 +50,9 @@ class Instance(
         // Ensure the instance is added as an acceptor.
         remote.network().map(config => remote.reconfigure(config.addAcceptors(this.address)))
       }
+
+      // Terminate the connection to the seed.
+      remote.close()
     }
   }
 
@@ -77,27 +81,46 @@ class Instance(
 object Instance {
 
   /**
-   * Constructs an instance that serves the specified beaker. Only the initial beaker in a cluster
-   * should be created in this manner.
+   * An instance configuration.
    *
-   * @param beaker Underlying beaker.
-   * @return Server instance.
+   * @param port Port number.
+   * @param seed Optional seed location.
+   * @param backoff Backoff duration.
+   * @param caches Cache hierarchy.
+   * @param database Underlying database.
    */
-  def apply(address: Address, beaker: Beaker): Instance = {
-    new Instance(address, beaker, None)
+  case class Config(
+    port: Int,
+    seed: Option[Address],
+    backoff: Duration,
+    caches: List[String],
+    database: String
+  )
+
+  /**
+   * Constructs an instance from the specified configuration.
+   *
+   * @param config Configuration.
+   * @return Unstarted Instance.
+   */
+  def apply(config: Instance.Config): Instance = {
+    val address = Address(InetAddress.getLocalHost.getHostName, config.port)
+    val storage = config.caches.foldRight(Database.forName(config.database))(Cache.forName)
+    val beaker  = Beaker(Archive(storage), Proposer(address, config.backoff))
+    new Instance(address, beaker, config.seed.map(Client.apply))
   }
 
   /**
-   * Constructs an instance that serves the specified beaker and bootstraps itself using the
-   * specified seed. All instances in a cluster except the initial member should be created using
-   * in this manner.
+   * Asynchronously serves an instance, and automatically closes it on system shutdown. Instances
+   * are bootstrapped from the configuration available on the classpath, but this configuration can
+   * be explicitly overridden by modifying system properties from the command line.
    *
-   * @param beaker Underlying beaker.
-   * @param seed Seed beaker.
-   * @return Server instance.
+   * @param args None.
    */
-  def apply(address: Address, beaker: Beaker, seed: Client): Instance = {
-    new Instance(address, beaker, Some(seed))
+  def main(args: Array[String]): Unit = {
+    val instance = Instance(loadConfigOrThrow[Instance.Config])
+    instance.serve()
+    sys.addShutdownHook(instance.close())
   }
 
 }
