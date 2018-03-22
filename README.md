@@ -1,7 +1,8 @@
 ![Logo](https://github.com/ashwin153/beaker/blob/master/beaker-assets/images/beaker-banner.png)
 ---
 [![Build Status](https://travis-ci.org/ashwin153/beaker.svg?branch=master)][1]
-[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][2]
+[![Maven Central](https://img.shields.io/maven-central/v/com.madavan/beaker-server_2.12.svg)][2]
+[![Docker](https://img.shields.io/docker/build/ashwin153/beaker.svg)][3]
 
 Beaker is a distributed, transactional key-value store. Beaker is ```N/2``` fault tolerant but 
 assumes that failures are fail-stop and that messages are received in order. Beaker is strongly 
@@ -26,4 +27,5 @@ beaker/                             https://github.com/ashwin153/beaker
 - Scala 2.12 
 
 [1]: https://travis-ci.org/ashwin153/beaker
-[2]: https://hub.docker.com/r/ashwin153/beaker/
+[2]: https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.madavan%22
+[3]: https://hub.docker.com/r/ashwin153/beaker/
