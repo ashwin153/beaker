@@ -52,9 +52,9 @@ package object util extends Retry {
      * @return Values of removed keys.
      */
     def remove(f: (A, B) => Boolean): Map[A, B] = {
-      val removed = x.filter(f.tupled)
+      val removed = x.filter(f.tupled).toMap
       x --= removed.keys
-      removed.toMap
+      removed
     }
 
     /**
@@ -64,9 +64,9 @@ package object util extends Retry {
      * @return Values of removed keys.
      */
     def removeKeys(f: A => Boolean): Map[A, B] = {
-      val removed = x.filterKeys(!f(_))
+      val removed = x.filterKeys(f).toMap
       x --= removed.keys
-      removed.toMap
+      removed
     }
 
   }
@@ -98,7 +98,7 @@ package object util extends Retry {
      *
      * @return Asynchronous try.
      */
-    def toFuture: Future[T] = Future.fromTry(x)
+    def toFuture: Future[T] = Future(x.get)
 
     /**
      * Converts the try to a unit.

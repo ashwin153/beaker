@@ -134,7 +134,7 @@ case class Proposer(
           updated.applies.nonEmpty || updated.repairs.nonEmpty
         } flatMap { updated =>
           // Asynchronously send the updated promise to a quorum of beakers and retry.
-          this.acceptors.quorumAsync(_.accept(updated).toFuture, this.configuration.quorum)
+          this.acceptors.quorumAsync(_.accept(updated), this.configuration.quorum)
           Thread.sleep(backoff.toMillis)
           consensus(updated.copy(ballot = after(updated.ballot)))
         }

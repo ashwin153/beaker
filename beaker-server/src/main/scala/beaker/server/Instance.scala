@@ -3,11 +3,13 @@ package beaker.server
 import beaker.client.{Client, Cluster}
 import beaker.common.util._
 import beaker.server.protobuf._
+
 import io.grpc.ServerBuilder
-import java.net.InetAddress
 import pureconfig._
+
+import java.net.InetAddress
 import scala.concurrent.ExecutionContext.Implicits._
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 /**
  * A Beaker server.
@@ -16,7 +18,7 @@ import scala.concurrent.duration.Duration
  * @param beaker Underlying beaker.
  * @param seed Optional seed.
  */
-class Instance(
+case class Instance(
   address: Address,
   beaker: Beaker,
   seed: Option[Client]
@@ -33,26 +35,32 @@ class Instance(
   def serve(): Unit = {
     this.server.start()
 
-    seed foreach { remote =>
-      ensure {
-        // Ensure the instance is added as a learner.
-        remote.network().map(config => remote.reconfigure(config.addLearners(this.address)))
-      }
-
-      ensure {
-        // Bootstrap the instance from a quorum of replicas.
-        remote.network().map(config => Cluster(config.acceptors)).toFuture flatMap { c =>
-          c.quorumAsync(_.scan(this.beaker.archive.write)) andThen { case _ => c.close() }
+    seed match {
+      case None =>
+        // Reconfigure the beaker with the default initial configuration.
+        val ballot  = this.beaker.proposer.after(this.beaker.proposer.view.ballot)
+        val initial = View(ballot, Configuration(0.51, Seq(this.address), Seq(this.address)))
+        this.beaker.proposer.reconfigure(initial)
+      case Some(remote) =>
+        ensure {
+          // Ensure the instance is added as a learner.
+          remote.network().map(config => remote.reconfigure(config.addLearners(this.address)))
         }
-      }
 
-      ensure {
-        // Ensure the instance is added as an acceptor.
-        remote.network().map(config => remote.reconfigure(config.addAcceptors(this.address)))
-      }
+        ensure {
+          // Bootstrap the instance from a quorum of replicas.
+          remote.network().map(config => Cluster(config.acceptors)).toFuture flatMap { c =>
+            c.quorumAsync(_.scan(this.beaker.archive.write)) andThen { case _ => c.close() }
+          }
+        }
 
-      // Terminate the connection to the seed.
-      remote.close()
+        ensure {
+          // Ensure the instance is added as an acceptor.
+          remote.network().map(config => remote.reconfigure(config.addAcceptors(this.address)))
+        }
+
+        // Terminate the connection to the seed.
+        remote.close()
     }
   }
 
@@ -107,7 +115,7 @@ object Instance {
     val address = Address(InetAddress.getLocalHost.getHostName, config.port)
     val storage = config.caches.foldRight(Database.forName(config.database))(Cache.forName)
     val beaker  = Beaker(Archive(storage), Proposer(address, config.backoff))
-    new Instance(address, beaker, config.seed.map(Client.apply))
+    Instance(address, beaker, config.seed.map(Client.apply))
   }
 
   /**

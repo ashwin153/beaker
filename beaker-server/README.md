@@ -103,4 +103,11 @@ replica of the database with the returned values. In this manner, it is guarante
 latest value of every key in the database. It then joins the cluster as a full member. This approach 
 consumes just ```D * N / 2``` in bandwidth and permits concurrent proposals.
 
+# Caching
+A __cache__ is a write-through database. Because dependencies are validated on commit, keys may be
+speculatively read from cache without sacrificing consistency. Beaker supports multi-level cache
+hierarchies over the underlying database. Revisions may be *fetched* or *updated* in cache. Cache
+coherency is maintained by updating the cache whenever transactions commit successfully or otherwise
+on the underlying database.
+
 [1]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf

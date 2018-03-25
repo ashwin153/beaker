@@ -88,7 +88,7 @@ case class Beaker(
       // If the beaker has not promised not to accept the proposal, then it votes for it.
       this.accepted --= this.accepted.filter(_ <| proposal)
       this.accepted += proposal
-      this.proposer.learners.broadcastAsync(_.learn(proposal).toFuture)
+      this.proposer.learners.broadcastAsync(_.learn(proposal))
       Future(Result(true))
     } else {
       // Otherwise, it rejects the proposal.

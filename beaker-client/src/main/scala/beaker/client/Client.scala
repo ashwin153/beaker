@@ -2,10 +2,10 @@ package beaker.client
 
 import beaker.common.util._
 import beaker.server.protobuf._
-
 import io.grpc.stub.StreamObserver
-import io.grpc.{ManagedChannel, ManagedChannelBuilder}
+import io.grpc.{Context, ManagedChannel, ManagedChannelBuilder}
 import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -155,8 +155,15 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to vote for.
    * @return Whether or not a vote was cast.
    */
-  private[beaker] def accept(proposal: Proposal): Try[Unit] = {
-    Try(BeakerGrpc.blockingStub(this.channel).accept(proposal)).filter(_.successful).toUnit
+  private[beaker] def accept(proposal: Proposal): Future[Unit] = {
+    val fork = Context.current().fork()
+    val prev = fork.attach()
+
+    try {
+      BeakerGrpc.stub(this.channel).accept(proposal).filter(_.successful).map(_ => ())
+    } finally {
+      fork.detach(prev)
+    }
   }
 
   /**
@@ -165,8 +172,15 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to commit.
    * @return Whether or not a vote was successfully cast.
    */
-  private[beaker] def learn(proposal: Proposal): Try[Unit] = {
-    Try(BeakerGrpc.blockingStub(this.channel).learn(proposal)).toUnit
+  private[beaker] def learn(proposal: Proposal): Future[Unit] = {
+    val fork = Context.current().fork()
+    val prev = fork.attach()
+
+    try {
+      BeakerGrpc.stub(this.channel).learn(proposal).map(_ => ())
+    } finally {
+      fork.detach(prev)
+    }
   }
 
 }
