@@ -46,7 +46,7 @@ case class Beaker(
   override def network(void: Void): Future[View] =
     Future(this.proposer.view)
 
-  override def reconfigure(configuration: Configuration): Future[Result] = {
+  override def reconfigure(configuration: Configuration): Future[Result] = synchronized {
     // Asynchronously propose the new view.
     val view = View(this.proposer.next(), configuration)
     val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
@@ -55,7 +55,7 @@ case class Beaker(
     task.future map { _ => Result(true) } recover { case _ => Result(false) }
   }
 
-  override def propose(transaction: Transaction): Future[Result] = {
+  override def propose(transaction: Transaction): Future[Result] = synchronized {
     // Asynchronously propose the transaction with the current view.
     val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
     val task = Task(this.proposer.consensus(proposal))
@@ -83,7 +83,7 @@ case class Beaker(
     }
   }
 
-  override def accept(proposal: Proposal): Future[Result] = {
+  override def accept(proposal: Proposal): Future[Result] = synchronized {
     if (!this.promised.exists(_ |> proposal)) {
       // If the beaker has not promised not to accept the proposal, then it votes for it.
       this.accepted --= this.accepted.filter(_ <| proposal)
@@ -96,17 +96,16 @@ case class Beaker(
     }
   }
 
-  override def learn(proposal: Proposal): Future[Void] = {
+  override def learn(proposal: Proposal): Future[Void] = synchronized {
     // Vote for the proposal and discard older learned proposals.
     this.learned.removeKeys(_ <| proposal)
     this.learned(proposal) = this.learned.getOrElse(proposal, 0) + 1
 
     if (this.learned(proposal) == this.proposer.acceptors.size / 2 + 1) {
       // If the proposal receives a majority of votes, then commit its transactions and repairs,
-      // remove all conflicting accepted proposals, and update the configuration view.
+      // and update the current configuration.
       val transactions = proposal.applies :+ Transaction(Map.empty, proposal.repairs)
       transactions.foreach(this.archive.commit)
-      this.accepted.retain(p => p.ballot != proposal.ballot && !(p <| proposal))
       this.proposer.reconfigure(proposal.view)
 
       // Complete consensus on conflicting transactions and views.
