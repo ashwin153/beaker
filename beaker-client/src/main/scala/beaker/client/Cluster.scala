@@ -75,8 +75,8 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
    * @param request Request to perform.
    * @return Sequence of responses.
    */
-  def broadcastAsync[T](request: Client => Future[T]): Seq[Future[T]] = shared {
-    this.members.values.toSeq.map(request)
+  def broadcastAsync[T](request: Client => Future[T]): Future[Seq[T]] = shared {
+    Future.sequence(this.members.values.toSeq.map(request))
   }
 
   /**

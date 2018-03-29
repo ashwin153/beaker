@@ -43,8 +43,8 @@ case class Beaker(
   override def scan(revisions: StreamObserver[Revisions]): StreamObserver[Range] =
     this.archive.scan(revisions)
 
-  override def network(void: Void): Future[Configuration] =
-    Future(this.proposer.configuration)
+  override def network(void: Void): Future[View] =
+    Future(this.proposer.view)
 
   override def reconfigure(configuration: Configuration): Future[Result] = {
     // Asynchronously propose the new view.
@@ -83,7 +83,7 @@ case class Beaker(
     }
   }
 
-  override def accept(proposal: Proposal): Future[Result] = synchronized {
+  override def accept(proposal: Proposal): Future[Result] = {
     if (!this.promised.exists(_ |> proposal)) {
       // If the beaker has not promised not to accept the proposal, then it votes for it.
       this.accepted --= this.accepted.filter(_ <| proposal)
@@ -96,7 +96,7 @@ case class Beaker(
     }
   }
 
-  override def learn(proposal: Proposal): Future[Void] = synchronized {
+  override def learn(proposal: Proposal): Future[Void] = {
     // Vote for the proposal and discard older learned proposals.
     this.learned.removeKeys(_ <| proposal)
     this.learned(proposal) = this.learned.getOrElse(proposal, 0) + 1

@@ -11,6 +11,8 @@ package object util extends Retry {
 
   implicit def mmap2map[A, B](x: mutable.Map[A, B]): Map[A, B] = x.toMap
   implicit def mmap2ops[A, B](x: mutable.Map[A, B]): MapOps[A, B] = MapOps(x.toMap)
+  implicit def try2unit[T](x: Try[T]): Try[Unit] = x.map(_ => ())
+  implicit def future2unit[T](x: Future[T]): Future[Unit] = x.map(_ => ())
 
   implicit class MapOps[A, B](x: Map[A, B]) {
 
@@ -98,7 +100,7 @@ package object util extends Retry {
      *
      * @return Asynchronous try.
      */
-    def toFuture: Future[T] = Future(x.get)
+    def toFuture: Future[T] = Future.fromTry(x)
 
     /**
      * Converts the try to a unit.

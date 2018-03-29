@@ -169,7 +169,7 @@ service Beaker {
   /**
    * Returns the current view of the network configuration.
    */
-  rpc Network(Void) returns (Configuration);
+  rpc Network(Void) returns (View);
 
   /**
    * Attempts to consistently update the network configuration.

@@ -127,7 +127,7 @@ class Client(channel: ManagedChannel) {
    * @return Whether or not the reconfiguration was successful.
    */
   def reconfigure(configuration: Configuration): Try[Unit] = {
-    Try(BeakerGrpc.blockingStub(this.channel).reconfigure(configuration)).filter(_.successful).toUnit
+    Try(BeakerGrpc.blockingStub(this.channel).reconfigure(configuration)).filter(_.successful)
   }
 
   /**
@@ -135,7 +135,7 @@ class Client(channel: ManagedChannel) {
    *
    * @return Network configuration.
    */
-  def network(): Try[Configuration] = {
+  def network(): Try[View] = {
     Try(BeakerGrpc.blockingStub(this.channel).network(Void()))
   }
 
@@ -160,7 +160,7 @@ class Client(channel: ManagedChannel) {
     val prev = fork.attach()
 
     try {
-      BeakerGrpc.stub(this.channel).accept(proposal).filter(_.successful).map(_ => ())
+      BeakerGrpc.stub(this.channel).accept(proposal).filter(_.successful)
     } finally {
       fork.detach(prev)
     }
@@ -177,7 +177,7 @@ class Client(channel: ManagedChannel) {
     val prev = fork.attach()
 
     try {
-      BeakerGrpc.stub(this.channel).learn(proposal).map(_ => ())
+      BeakerGrpc.stub(this.channel).learn(proposal)
     } finally {
       fork.detach(prev)
     }

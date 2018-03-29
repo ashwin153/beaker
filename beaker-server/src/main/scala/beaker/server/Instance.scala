@@ -44,19 +44,24 @@ case class Instance(
       case Some(remote) =>
         ensure {
           // Ensure the instance is added as a learner.
-          remote.network().map(config => remote.reconfigure(config.addLearners(this.address)))
+          remote.network() map { view =>
+            remote.reconfigure(view.configuration.addLearners(this.address))
+          }
         }
 
         ensure {
           // Bootstrap the instance from a quorum of replicas.
-          remote.network().map(config => Cluster(config.acceptors)).toFuture flatMap { c =>
-            c.quorumAsync(_.scan(this.beaker.archive.write)) andThen { case _ => c.close() }
+          remote.network().toFuture map { view =>
+            this.beaker.proposer.reconfigure(view)
+            this.beaker.proposer.acceptors.quorumAsync(_.scan(this.beaker.archive.write))
           }
         }
 
         ensure {
           // Ensure the instance is added as an acceptor.
-          remote.network().map(config => remote.reconfigure(config.addAcceptors(this.address)))
+          remote.network() map { view =>
+            remote.reconfigure(view.configuration.addAcceptors(this.address))
+          }
         }
 
         // Terminate the connection to the seed.
