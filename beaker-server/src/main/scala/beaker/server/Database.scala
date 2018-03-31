@@ -2,7 +2,6 @@ package beaker.server
 
 import beaker.server.Database._
 import beaker.server.protobuf._
-import beaker.server.storage._
 
 import java.io.Closeable
 import scala.math.Ordering.Implicits._
@@ -69,16 +68,5 @@ object Database {
    * @param invalid Latest revision of invalid dependencies.
    */
   case class Conflicts(invalid: Map[Key, Revision]) extends Exception
-
-  /**
-   * Constructs a database from the specified name.
-   *
-   * @param name Database type.
-   * @return Statically-configured database.
-   */
-  def forName(name: String): Database = name match {
-    case "local" => Local.Database()
-    case "sql" => SQL.Database()
-  }
 
 }

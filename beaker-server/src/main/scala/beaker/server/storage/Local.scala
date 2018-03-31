@@ -51,13 +51,28 @@ object Local {
   object Database {
 
     /**
-     * Constructs an in-memory database initialized with the specified items.
-     *
-     * @param items Initial contents.
-     * @return Initialized database.
+     * An in-memory database configuration.
      */
-    def apply(items: (Key, Revision)*): Local.Database =
-      Local.Database(items.toMap)
+    case class Config(
+
+    )
+
+    /**
+     * Constructs an in-memory database from the classpath configuration.
+     *
+     * @return Statically-configured database.
+     */
+    def apply(): Local.Database =
+      Local.Database(loadConfigOrThrow[Config]("beaker.databases.local"))
+
+    /**
+     * Constructs an in-memory database from the provided configuration.
+     *
+     * @param config Configuration.
+     * @return Dynamically-configured database.
+     */
+    def apply(config: Database.Config): Local.Database =
+      Local.Database(mutable.SortedMap.empty[Key, Revision])
 
     /**
      * Constructs an in-memory database initialized with the specified key-value pairs.

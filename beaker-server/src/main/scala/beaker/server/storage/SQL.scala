@@ -25,7 +25,7 @@ object SQL {
   ) extends server.Database {
 
     // Verify that the table schema exists.
-    val exists: Try[Unit] = perform(this.dialect.create)
+    require(perform(this.dialect.create).isSuccess, "Unable to create table schema.")
 
     override def read(keys: Set[Key]): Try[Map[Key, Revision]] =
       if (keys.isEmpty) Success(Map.empty) else perform(this.dialect.select(_, keys))
@@ -40,23 +40,28 @@ object SQL {
       this.pool.close()
 
     /**
-     * Performs the specified operation on the database and return the result.
+     * Performs the specified operation on the database and returns the result.
      *
      * @param f JDBC operations.
+     * @param isolation Transaction isolation level.
      * @throws SQLException If the database is inaccessible.
      * @return Result of operations or an exception on failure.
      */
-    def perform[R](f: Connection => R): Try[R] = {
+    def perform[R](
+      f: Connection => R,
+      isolation: Int = Connection.TRANSACTION_READ_UNCOMMITTED
+    ): Try[R] = {
       var con: Connection = null
       Try {
         con = this.pool.getConnection()
-        con.setTransactionIsolation(Connection.TRANSACTION_NONE)
+        con.setTransactionIsolation(isolation)
         con.setAutoCommit(false)
         val res = f(con)
         con.commit()
         con.close()
         res
       } recoverWith { case e: Exception if con != null =>
+        println(e)
         con.rollback()
         con.close()
         Failure(e)
@@ -96,7 +101,7 @@ object SQL {
      * @param config Configuration.
      * @return Dynamically-configured SQL database.
      */
-    def apply(config: SQL.Database.Config): SQL.Database = {
+    def apply(config: Database.Config): SQL.Database = {
       // Setup a C3P0 connection pool.
       val pool = new ComboPooledDataSource()
       val dialect = SQL.Dialect.forName(config.dialect)
@@ -186,7 +191,7 @@ object SQL {
         // encoding, which requires up to 3 bytes per character, the key may be 255 characters long.
         // https://wildlyinaccurate.com/mysql-specified-key-was-too-long-max-key-length-is-767-bytes
         val sql =
-          s""" CREATE TABLE IF NOT EXISTS `caustic` (
+          s""" CREATE TABLE IF NOT EXISTS `beaker` (
              |   `key` VARCHAR(255) NOT NULL,
              |   `version` BIGINT,
              |   `value` TEXT,
@@ -206,7 +211,7 @@ object SQL {
         // https://stackoverflow.com/q/4514697/1447029
         val sql =
           s""" SELECT `key`, `version`, `value`
-             | FROM `caustic`
+             | FROM `beaker`
              | WHERE `key` IN (${List.fill(keys.size)("?").mkString(",")})
          """.stripMargin
 
@@ -231,7 +236,7 @@ object SQL {
       override def range(con: Connection, after: Option[Key], limit: Int): Map[Key, Revision] = {
         val sql =
           s""" SELECT `key`, `version`, `value`
-             | FROM `caustic`
+             | FROM `beaker`
              | WHERE `key` ${if (after.isDefined) "> ?"}
              | LIMIT $limit
            """.stripMargin
@@ -258,7 +263,7 @@ object SQL {
         // Benchmarks show that this query performs significantly better than a REPLACE INTO and
         // equivalently to an INSERT in the absence of conflicts.
         val sql =
-          s""" INSERT INTO `caustic` (`key`, `version`, `value`)
+          s""" INSERT INTO `beaker` (`key`, `version`, `value`)
              | VALUES ${Seq.fill(changes.size)("(?, ?, ?)").mkString(",")}
              | ON DUPLICATE KEY UPDATE
              | `version` = VALUES(`version`),
@@ -293,7 +298,7 @@ object SQL {
         // Unlike MySQL, PostgreSQL has no defined limits on the size of keys. Keys are theoretically
         // bounded by the maximum query size (1 GB), but in practice this is almost never a concern.
         val sql =
-          s""" CREATE TABLE IF NOT EXISTS caustic (
+          s""" CREATE TABLE IF NOT EXISTS beaker (
              |   key VARCHAR NOT NULL,
              |   version BIGINT DEFAULT 0,
              |   value TEXT,
@@ -365,7 +370,7 @@ object SQL {
         // Requires PostgreSQL 9.5+, but performs a bulk upsert that is similar in functionality to
         // INSERT ... ON DUPLICATE KEY UPDATE in MySQL. https://stackoverflow.com/a/34529505/1447029
         val sql =
-          s""" INSERT INTO caustic (key, version, value)
+          s""" INSERT INTO beaker (key, version, value)
              | VALUES ${Seq.fill(changes.size)("(?, ?, ?)").mkString(",")}
              | ON CONFLICT (key) DO UPDATE SET
              | version = excluded.version,
