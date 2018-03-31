@@ -2,11 +2,10 @@ package beaker.client
 
 import beaker.common.concurrent.Locking
 import beaker.server.protobuf.Address
-
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits._
-import scala.util.{Random, Try}
+import scala.util.{Failure, Random, Success, Try}
 
 /**
  * A thread-safe collection of clients.
@@ -109,9 +108,10 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
    */
   def quorum[T](request: Client => Try[T], of: Double = 0.51): Try[Seq[T]] = shared {
     require(of > 0.5 && of <= 1, s"Invalid quorum size $of.")
-    val majority = math.ceil(this.members.size * of).toInt + 1
-    val clients = Random.shuffle(this.members.values.toSeq).take(majority)
-    Try(clients.par.map(client => request(client).get).seq)
+    val quorum = math.ceil(this.members.size * of).toInt + 1
+    val clients = Random.shuffle(this.members.values.toSeq).take(quorum)
+    val responses = clients.par.map(client => request(client)).filter(_.isSuccess).map(_.get).seq
+    Try(responses).filter(_.size >= this.members.size / 2 + 1)
   }
 
   /**
@@ -124,9 +124,11 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
    */
   def quorumAsync[T](request: Client => Future[T], of: Double = 0.51): Future[Seq[T]] = shared {
     require(of > 0.5 && of <= 1, s"Invalid quorum size $of.")
-    val majority = math.ceil(this.members.size * of).toInt + 1
-    val clients = Random.shuffle(this.members.values.toSeq).take(majority)
-    Future.sequence(clients.map(request))
+    val quorum = math.ceil(this.members.size * of).toInt + 1
+    val clients = Random.shuffle(this.members.values.toSeq).take(quorum)
+    val requests = clients.map(c => request(c) map { Success(_) } recover { case x => Failure(x) })
+    val responses = Future.sequence(requests).map(_.filter(_.isSuccess).map(_.get))
+    responses.filter(_.size >= this.members.size / 2 + 1)
   }
 
 }

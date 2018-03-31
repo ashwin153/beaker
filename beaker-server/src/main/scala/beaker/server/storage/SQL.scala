@@ -88,7 +88,7 @@ object SQL {
      * @return Statically-configured SQL database.
      */
     def apply(): SQL.Database =
-      SQL.Database(loadConfigOrThrow[Config]("beaker.database.sql"))
+      SQL.Database(loadConfigOrThrow[Config]("beaker.databases.sql"))
 
     /**
      * Constructs a SQL database from the provided configuration.

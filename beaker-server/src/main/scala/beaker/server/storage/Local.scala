@@ -112,7 +112,7 @@ object Local {
      * @return Statically-configured cache.
      */
     def apply(database: server.Database): Local.Cache =
-      Local.Cache(database, loadConfigOrThrow[Config]("beaker.cache.local"))
+      Local.Cache(database, loadConfigOrThrow[Config]("beaker.caches.local"))
 
     /**
      * Constructs an in-memory cache from the provided configuration.

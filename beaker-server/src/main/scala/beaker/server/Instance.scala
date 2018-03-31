@@ -104,7 +104,7 @@ object Instance {
    */
   case class Config(
     port: Int,
-    seed: Option[Address],
+    seed: Option[String],
     backoff: Duration,
     caches: List[String],
     database: String
@@ -120,7 +120,8 @@ object Instance {
     val address = Address(InetAddress.getLocalHost.getHostName, config.port)
     val storage = config.caches.foldRight(Database.forName(config.database))(Cache.forName)
     val beaker  = Beaker(Archive(storage), Proposer(address, config.backoff))
-    Instance(address, beaker, config.seed.map(Client.apply))
+    val seed    = config.seed.map(_.split(":")).map(x => Address(x(0), x(1).toInt))
+    Instance(address, beaker, seed.map(Client(_)))
   }
 
   /**

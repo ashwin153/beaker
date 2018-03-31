@@ -70,7 +70,7 @@ object Redis {
      * @return Statically-configured cache.
      */
     def apply(database: server.Database): Redis.Cache =
-      Redis.Cache(database, loadConfigOrThrow[Config]("beaker.cache.redis"))
+      Redis.Cache(database, loadConfigOrThrow[Config]("beaker.caches.redis"))
 
     /**
      * Constructs a Redis cache from the provided configuration.
