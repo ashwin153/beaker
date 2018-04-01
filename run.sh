@@ -33,7 +33,7 @@ done
 #                                     Bootstrap Docker Container                                   #
 #                               https://docs.docker.com/get-started/                               #
 ####################################################################################################
-docker run \
+docker run -d \
   -p ${port}:${port} \
   ${conf} \
   ashwin153/beaker \
