@@ -5,9 +5,9 @@
 ####################################################################################################
 eval $(docker-machine env)
 host=$(docker-machine ip)
-opts="-Dbeaker.server.address=${host}:${port}"
 port=9090
 conf=""
+opts="-Dbeaker.server.address=${host}:${port}"
 
 while getopts ":hp:c:o:" opt; do
   case $opt in
@@ -33,11 +33,11 @@ done
 #                                     Bootstrap Docker Container                                   #
 #                               https://docs.docker.com/get-started/                               #
 ####################################################################################################
-docker run -d \
+docker run \
   -p ${port}:${port} \
   ${conf} \
   ashwin153/beaker \
   ./pants run beaker-server/src/main/scala:bin \
-  --jvm-run-jvm-options='${opts}' || \
+  --jvm-run-jvm-options="${opts}" || \
 echo "\e[31mUnable to create a docker container.\e[39m" && \
 exit 1
