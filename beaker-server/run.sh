@@ -5,7 +5,7 @@
 ####################################################################################################
 eval $(docker-machine env)
 host=$(docker-machine ip)
-opts="-Dbeaker.server.address=\"${host}:${port}\"
+opts="-Dbeaker.server.address=${host}:${port}"
 port=9090
 conf=""
 
