@@ -3,6 +3,9 @@
 import beaker.client._
 val client = Client("localhost", 9090)
 
+// Read.
+client.get("x")
+
 // Update.
 client.put("x", "hello")
 client.get("x")
