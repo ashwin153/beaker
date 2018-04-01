@@ -24,7 +24,7 @@ case class Server(
   seed: Option[Client]
 ) {
 
-  private[this] val server = ServerBuilder
+  private[this] val underlying = ServerBuilder
     .forPort(this.address.port)
     .addService(BeakerGrpc.bindService(this.beaker, global))
     .build()
@@ -33,7 +33,7 @@ case class Server(
    * Asynchronously serves the beaker.
    */
   def serve(): Unit = {
-    this.server.start()
+    this.underlying.start()
 
     seed match {
       case None =>
@@ -86,7 +86,7 @@ case class Server(
       cluster.random(_.reconfigure(updated)) andThen { _ => cluster.close() }
     } map { _ =>
       // Shutdown the instance.
-      this.server.shutdown()
+      this.underlying.shutdown()
     }
   }
 
