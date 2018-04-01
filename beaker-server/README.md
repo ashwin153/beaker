@@ -1,16 +1,15 @@
 # Getting Started
-An __instance__ may be started and run using [Docker][2]. Refer to the [reference configuration][3] 
+An __instance__ may be started and run using [Docker][2]. Refer to the [reference][3] configuration
 for information about the various configuration parameters and their default values. This 
 configuration may be optionally override by providing a static configuration file, 
 ```application.conf```, or by explicitly overriding parameters from the command line.
 
-```
-docker run -d \
-  -p ${port}:${port} \
-  -v ${/path/to/application.conf}:/beaker/beaker-server/src/main/resources/application.conf \
-  ashwin153/beaker \
-  ./pants run beaker-server/src/main/scala:bin \
-  --jvm-run-jvm-options='-Dbeaker.server.address="${host}:${port}"'
+```bash
+./run.sh \
+  -p 9091 \                                     # Port number. Defaults to 9090.
+  -c /path/to/application.conf                  # Configuration file. Defaults to reference. 
+  -o beaker.server.seed=localhost:9090          # Configuration overrides.
+  -o 'beaker.database.sql.password="asdf"'      # Configuration overrides.
 ```
 
 # Background
