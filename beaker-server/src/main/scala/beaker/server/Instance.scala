@@ -42,6 +42,7 @@ case class Instance(
         val ballot  = this.beaker.proposer.after(this.beaker.proposer.view.ballot)
         val initial = View(ballot, Configuration(0.51, Seq(this.address), Seq(this.address)))
         this.beaker.proposer.reconfigure(initial)
+
       case Some(remote) =>
         ensure {
           // Ensure the instance is added as a learner.
@@ -100,14 +101,14 @@ object Instance {
    * @param port Port number.
    * @param seed Optional seed location.
    * @param backoff Backoff duration.
-   * @param caches Cache hierarchy.
+   * @param cache Cache hierarchy.
    * @param database Underlying database.
    */
   case class Config(
     port: Int,
     seed: Option[String],
     backoff: Duration,
-    caches: List[String],
+    cache: List[String],
     database: String
   )
 
@@ -117,7 +118,7 @@ object Instance {
    * @return Statically-configured instance.
    */
   def apply(): Instance =
-    Instance(loadConfigOrThrow[Instance.Config])
+    Instance(loadConfigOrThrow[Instance.Config]("beaker.server"))
 
   /**
    * Constructs an instance from the specified configuration.
@@ -127,7 +128,7 @@ object Instance {
    */
   def apply(config: Instance.Config): Instance = {
     // Construct the underlying database and cache hierarchy.
-    val storage = config.caches.foldRight {
+    val storage = config.cache.foldRight {
       config.database match {
         case "local" => Local.Database()
         case "sql"   => SQL.Database()
