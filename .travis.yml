@@ -69,7 +69,7 @@ services:
 
 after_success: |
   if [ "$TRAVIS_BRANCH" == "master" ] ; then
-    docker build -t ashwin153/caustic .
+    docker build -t ashwin153/beaker .
     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-    docker push ashwin153/caustic
+    docker push ashwin153/beaker
   fi
