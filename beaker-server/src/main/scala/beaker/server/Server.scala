@@ -8,7 +8,6 @@ import beaker.server.storage._
 import io.grpc.ServerBuilder
 import pureconfig._
 
-import java.net.InetAddress
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
 
@@ -19,7 +18,7 @@ import scala.concurrent.duration._
  * @param beaker Underlying beaker.
  * @param seed Optional seed.
  */
-case class Instance(
+case class Server(
   address: Address,
   beaker: Beaker,
   seed: Option[Client]
@@ -93,19 +92,30 @@ case class Instance(
 
 }
 
-object Instance {
+object Server {
+
+  /**
+   * Constructs an address from the specified url.
+   *
+   * @param url Connection url.
+   * @return Address.
+   */
+  private def parse(url: String): Address = {
+    val tokens = url.split(":")
+    Address(tokens(0), tokens(1).toInt)
+  }
 
   /**
    * An instance configuration.
    *
-   * @param port Port number.
+   * @param address Server location.
    * @param seed Optional seed location.
    * @param backoff Backoff duration.
    * @param cache Cache hierarchy.
    * @param database Underlying database.
    */
   case class Config(
-    port: Int,
+    address: String,
     seed: Option[String],
     backoff: Duration,
     cache: List[String],
@@ -117,8 +127,8 @@ object Instance {
    *
    * @return Statically-configured instance.
    */
-  def apply(): Instance =
-    Instance(loadConfigOrThrow[Instance.Config]("beaker.server"))
+  def apply(): Server =
+    Server(loadConfigOrThrow[Server.Config]("beaker.server"))
 
   /**
    * Constructs an instance from the specified configuration.
@@ -126,7 +136,7 @@ object Instance {
    * @param config Configuration.
    * @return Unstarted Instance.
    */
-  def apply(config: Instance.Config): Instance = {
+  def apply(config: Server.Config): Server = {
     // Construct the underlying database and cache hierarchy.
     val storage = config.cache.foldRight {
       config.database match {
@@ -141,10 +151,10 @@ object Instance {
     }
 
     // Bootstrap an instance from the configuration.
-    val address = Address(InetAddress.getLocalHost.getHostName, config.port)
+    val address = parse(config.address)
     val beaker = Beaker(Archive(storage), Proposer(address, config.backoff))
-    val seed  = config.seed.map(_.split(":")).map(x => Address(x(0), x(1).toInt))
-    Instance(address, beaker, seed.map(Client(_)))
+    val seed = config.seed.map(parse)
+    Server(address, beaker, seed.map(Client(_)))
   }
 
   /**
@@ -155,7 +165,7 @@ object Instance {
    * @param args None.
    */
   def main(args: Array[String]): Unit = {
-    val instance = Instance()
+    val instance = Server()
     instance.serve()
     sys.addShutdownHook(instance.close())
   }
