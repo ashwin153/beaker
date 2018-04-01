@@ -6,11 +6,11 @@ configuration may be optionally override by providing a static configuration fil
 
 ```
 docker run -d \
-  -p ${external port}:${internal port} \
+  -p ${port}:${port} \
   -v ${/path/to/application.conf}:/beaker/beaker-server/src/main/resources/application.conf \
   ashwin153/beaker \
   ./pants run beaker-server/src/main/scala:bin \
-  -- -Dbeaker.database.sql.password=${password}
+  --jvm-run-jvm-options='-Dbeaker.server.address="${host}:${port}"'
 ```
 
 # Background
