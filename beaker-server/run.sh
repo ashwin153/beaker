@@ -5,7 +5,7 @@
 ####################################################################################################
 eval $(docker-machine env)
 host=$(docker-machine ip)
-options="-Dbeaker.server.address=\"${host}:${port}\"
+opts="-Dbeaker.server.address=\"${host}:${port}\"
 port=9090
 conf=""
 
@@ -24,7 +24,7 @@ while getopts ":hp:c:o:" opt; do
         ;;
     c ) conf="-v ${OPTARG}:/beaker/beaker-server/src/main/resources/application.conf"
         ;;
-    o ) options+=",-D${OPTARG}"
+    o ) opts+=",-D${OPTARG}"
         ;;
   esac
 done
@@ -38,6 +38,6 @@ docker run -d \
   ${conf} \
   ashwin153/beaker \
   ./pants run beaker-server/src/main/scala:bin \
-  --jvm-run-jvm-options='${options}' || \
+  --jvm-run-jvm-options='${opts}' || \
 echo "\e[31mUnable to create a docker container.\e[39m" && \
 exit 1
