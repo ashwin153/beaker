@@ -1,3 +1,18 @@
+# Getting Started
+An __instance__ may be started and run using [Docker][2]. Refer to the [reference configuration][3] 
+for information about the various configuration parameters and their default values. This 
+configuration may be optionally override by providing a static configuration file, 
+```application.conf```, or by explicitly overriding parameters from the command line.
+
+```
+docker run -d \
+  -p ${external port}:${internal port} \
+  -v ${/path/to/application.conf}:/beaker/beaker-server/src/main/resources/application.conf \
+  ashwin153/beaker \
+  ./pants run beaker-server/src/main/scala:bin \
+  -- -Dbeaker.database.sql.password=${password}
+```
+
 # Background
 A __database__ is a key-value store. Databases map keys to versioned values, called __revisions__. 
 Revisions are uniquely identified and totally ordered by their version. Keys may be *read* or
@@ -111,3 +126,5 @@ coherency is maintained by updating the cache whenever transactions commit succe
 on the underlying database.
 
 [1]: https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf
+[2]: https://hub.docker.com/r/ashwin153/beaker/
+[3]: https://github.com/ashwin153/beaker/blob/master/beaker-server/src/main/resources/reference.conf
