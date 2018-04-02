@@ -5,11 +5,14 @@ configuration may be optionally override by providing a static configuration fil
 ```application.conf```, or by explicitly overriding parameters from the command line.
 
 ```bash
-./run.sh \
-  -p 9091 \                                     # Port number. Defaults to 9090.
-  -c /path/to/application.conf                  # Configuration file. Defaults to reference. 
+curl https://raw.githubusercontent.com/ashwin153/beaker/master/run.sh -O
+chmod +x run.sh
+
+sudo ./run.sh -d \                              # Daemonize server. (false)
+  -p 9091 \                                     # Port number. (9090)
+  -c /path/to/application.conf                  # Configuration file. (reference.conf)
   -o beaker.server.seed=localhost:9090          # Configuration overrides.
-  -o 'beaker.database.sql.password="asdf"'      # Configuration overrides.
+  -o 'beaker.database.sql.password="asdf"'      # Configuration overrides.=
 ```
 
 # Background
