@@ -38,8 +38,8 @@ case class Server(
     seed match {
       case None =>
         // Reconfigure the beaker with the default initial configuration.
-        val ballot  = this.beaker.proposer.after(this.beaker.proposer.view.ballot)
-        val initial = View(ballot, Configuration(0.51, Seq(this.address), Seq(this.address)))
+        val ballot = this.beaker.proposer.after(this.beaker.proposer.view.ballot)
+        val initial = View(ballot, Configuration(Seq(this.address), Seq(this.address)))
         this.beaker.proposer.reconfigure(initial)
 
       case Some(remote) =>

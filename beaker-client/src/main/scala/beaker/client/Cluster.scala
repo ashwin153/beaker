@@ -103,13 +103,10 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
    * if all requests complete successfully.
    *
    * @param request Request to perform.
-   * @param of Quorum size. (0.50, 1]
    * @return Sequence of responses.
    */
-  def quorum[T](request: Client => Try[T], of: Double = 0.51): Try[Seq[T]] = shared {
-    require(of > 0.5 && of <= 1, s"Invalid quorum size $of.")
-    val quorum = math.ceil(this.members.size * of).toInt + 1
-    val clients = Random.shuffle(this.members.values.toSeq).take(quorum)
+  def quorum[T](request: Client => Try[T]): Try[Seq[T]] = shared {
+    val clients = Random.shuffle(this.members.values.toSeq).take(this.members.size / 2 + 1)
     val responses = clients.par.map(client => request(client)).filter(_.isSuccess).map(_.get).seq
     Try(responses).filter(_.size >= this.members.size / 2 + 1)
   }
@@ -119,13 +116,10 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
    * successfully if and only if all requests complete successfully.
    *
    * @param request Request to perform.
-   * @param of Quorum size. (0.5, 1]
    * @return Sequence of responses.
    */
-  def quorumAsync[T](request: Client => Future[T], of: Double = 0.51): Future[Seq[T]] = shared {
-    require(of > 0.5 && of <= 1, s"Invalid quorum size $of.")
-    val quorum = math.ceil(this.members.size * of).toInt + 1
-    val clients = Random.shuffle(this.members.values.toSeq).take(quorum)
+  def quorumAsync[T](request: Client => Future[T]): Future[Seq[T]] = shared {
+    val clients = Random.shuffle(this.members.values.toSeq).take(this.members.size / 2 + 1)
     val requests = clients.map(c => request(c) map { Success(_) } recover { case x => Failure(x) })
     val responses = Future.sequence(requests).map(_.filter(_.isSuccess).map(_.get))
     responses.filter(_.size >= this.members.size / 2 + 1)

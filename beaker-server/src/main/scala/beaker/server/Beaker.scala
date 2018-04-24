@@ -104,7 +104,7 @@ case class Beaker(
     if (this.learned(proposal) == this.proposer.acceptors.size / 2 + 1) {
       // If the proposal receives a majority of votes, then commit its transactions and repairs,
       // and update the current configuration.
-      val transactions = proposal.applies :+ Transaction(Map.empty, proposal.repairs)
+      val transactions = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
       transactions.foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
 

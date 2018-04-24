@@ -45,12 +45,12 @@ class Client(channel: ManagedChannel) {
    * Asynchronously applies the function to every chunk limit keys at a time.
    *
    * @param f Function to apply.
-   * @param limit Chunk size.
+   * @param by Chunk size.
    * @return Asynchronous result.
    */
-  def scan[U](f: Map[Key, Revision] => U, limit: Int = 10000): Future[Unit] = {
+  def scan[U](f: Map[Key, Revision] => U, by: Int = 10000): Future[Unit] = {
     val promise = Promise[Unit]()
-    var range = Range(None, limit)
+    var range = Range(None, by)
     val server = new AtomicReference[StreamObserver[Range]]
 
     // Asynchronously scans the remote beaker and repairs the local beaker.

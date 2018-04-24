@@ -91,13 +91,11 @@ message Address {
 /**
  * A network configuration.
  *
- * @param quorum Percentage of acceptors required to form a quorum. (0.5, 1.0]
  * @param acceptors Addresses of all acceptors.
  * @param learners Addresses of all learners.
  */
 message Configuration {
 
-  required double quorum = 1 [default = 0.51];
   repeated Address acceptors = 2;
   repeated Address learners = 3;
 
@@ -120,14 +118,14 @@ message View {
  * A collection of non-conflicting transactions.
  *
  * @param ballot Unique identifier.
- * @param applies Transactions applied by the proposal.
+ * @param commits Transactions committed by the proposal.
  * @param repairs Keys repaired by the proposal.
  * @param view Current network configuration.
  */
 message Proposal {
 
   required Ballot ballot = 1;
-  repeated Transaction applies = 2;
+  repeated Transaction commits = 2;
   map<string, Revision> repairs = 3;
   required View view = 4;
 

@@ -104,20 +104,20 @@ case class Proposer(
    */
   def consensus(proposal: Proposal): Try[Unit] = {
     // Prepare the proposal on a quorum of beakers.
-    this.acceptors.quorum(_.prepare(proposal), this.configuration.quorum) flatMap { promises =>
+    this.acceptors.quorum(_.prepare(proposal)) flatMap { promises =>
       val promise = promises.reduce(_ merge _)
       if (proposal.ballot < promise.ballot || proposal.view < promise.view) {
         // If there exists a newer promise, then reconfigure and retry.
         reconfigure(promise.view)
         consensus(proposal.copy(ballot = after(promise.ballot)))
-      } else if (!promise.matches(proposal)) {
+      } else if (!promise.equivalent(proposal)) {
         // If the promise does not match the proposal, then retry with the promise.
         reconfigure(promise.view)
         consensus(promise.copy(ballot = after(promise.ballot)))
       } else {
         // Otherwise, get all keys in the proposal from a quorum.
-        val depends = proposal.applies.flatMap(_.depends.keySet)
-        this.acceptors.quorum(_.get(depends.toSet), this.configuration.quorum) map { replicas =>
+        val depends = proposal.commits.flatMap(_.depends.keySet)
+        this.acceptors.quorum(_.get(depends.toSet)) map { replicas =>
           // Determine the latest and the oldest version of each key.
           val latest = replicas.reduce(_ maximum _)
           val oldest = replicas.reduce(_ minimum _).withDefaultValue(Revision.defaultInstance)
@@ -125,16 +125,16 @@ case class Proposer(
 
           // Discard all transactions in the proposal that cannot be committed and repair all keys
           // that are read - but not written - by the proposal with different revisions.
-          val applies = proposal.applies.filter(snapshot.commit(_).isSuccess)
-          val changes = applies.flatMap(_.changes.keySet)
+          val commits = proposal.commits.filter(snapshot.commit(_).isSuccess)
+          val changes = commits.flatMap(_.changes.keySet)
           val repairs = (latest -- changes) filter { case (k, r) => oldest(k) < r }
-          proposal.copy(applies = applies, repairs = proposal.repairs maximum repairs)
+          proposal.copy(commits = commits, repairs = proposal.repairs maximum repairs)
         } filter { updated =>
           // Filter proposal that contain transactions or repairs or a new view.
-          updated.applies.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
+          updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
-          this.acceptors.quorumAsync(_.accept(updated), this.configuration.quorum)
+          this.acceptors.broadcastAsync(_.accept(updated))
           Thread.sleep(backoff.toMillis)
           consensus(updated.copy(ballot = after(updated.ballot)))
         }

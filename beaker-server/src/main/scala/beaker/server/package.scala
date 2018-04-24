@@ -34,7 +34,7 @@ package object server {
   // Proposals are partially ordered by their view and by ballot when their transactions conflict.
   implicit val proposalOrder: PartialOrder[Proposal] = (x, y) => {
     if (x.view == y.view)
-      x.applies.find(t => y.applies.exists(_ ~ t)).map(_ => x.ballot < y.ballot)
+      x.commits.find(t => y.commits.exists(_ ~ t)).map(_ => x.ballot < y.ballot)
     else
       Some(x.view < y.view)
   }
@@ -55,13 +55,13 @@ package object server {
   implicit class ProposalOps(x: Proposal) {
 
     /**
-     * Returns whether or not the proposal apply the same transactions to the same configuration.
+     * Returns whether or not the proposal commit the same transactions in the same configuration.
      *
      * @param y A proposal.
-     * @return Whether or not they match.
+     * @return Whether or not they are equivalent.
      */
-    def matches(y: Proposal): Boolean =
-      x.applies == y.applies && x.view == y.view
+    def equivalent(y: Proposal): Boolean =
+      x.commits == y.commits && x.view == y.view
 
     /**
      * Merges the older proposal into the newer proposal by discarding all transactions in the older
@@ -73,9 +73,9 @@ package object server {
      */
     def merge(y: Proposal): Proposal = {
       val (latest, oldest) = if (x <| y) (y, x) else (x, y)
-      val applies = latest.applies ++ oldest.applies.filterNot(t => latest.applies.exists(_ ~ t))
+      val commits = latest.commits ++ oldest.commits.filterNot(t => latest.commits.exists(_ ~ t))
       val repairs = latest.repairs maximum oldest.repairs
-      latest.copy(applies = applies, repairs = repairs)
+      latest.copy(commits = commits, repairs = repairs)
     }
 
   }
