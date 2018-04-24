@@ -3,7 +3,7 @@
 #                                        Parse Configuration                                       #
 #  https://github.com/ashwin153/beaker/blob/master/beaker-server/src/main/resources/reference.conf #
 ####################################################################################################
-host=$(hostname -I)
+host=$(hostname -I | cut -d' ' -f1)
 port=9090
 conf=""
 opts=""
