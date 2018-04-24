@@ -9,7 +9,7 @@ git clone https://github.com/ashwin153/beaker && cd beaker/
 
 ./run.sh
   -p 9091 \                                     # Port number. (9090)
-  -c /path/to/application.conf                  # Configuration file. (reference.conf)
+  -c /path/to/application.conf \                # Configuration file. (reference.conf)
   -o beaker.server.seed=localhost:9090          # Configuration overrides.
 ```
 
