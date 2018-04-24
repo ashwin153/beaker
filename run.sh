@@ -3,10 +3,10 @@
 #                                        Parse Configuration                                       #
 #  https://github.com/ashwin153/beaker/blob/master/beaker-server/src/main/resources/reference.conf #
 ####################################################################################################
-host=$(hostname -I)
+host=$(hostname -I | cut -d' ' -f1)
 port=9090
 conf=""
-opts=""
+pts=""
 
 while getopts ":hc:dn:o:p:r:" opt; do
   case $opt in
@@ -22,7 +22,7 @@ while getopts ":hc:dn:o:p:r:" opt; do
         ;;
     c ) conf="-v ${OPTARG}:/beaker/beaker-server/src/main/resources/application.conf"
         ;;
-    o ) opts+="-D${OPTARG},"
+    o ) opts+="--jvm-run-jvm-options="\""-D${OPTARG}"\"" "
         ;;
     p ) port=${OPTARG}
         ;;
@@ -33,6 +33,6 @@ done
 #                                         Bootstrap Server                                         #
 #                               https://docs.docker.com/get-started/                               #
 ####################################################################################################
-opts+="-Dbeaker.server.address=${host}:${port}"
+opts+="--jvm-run-jvm-options="\""-Dbeaker.server.address=${host}:${port}"\"
 sudo apt-get update && sudo apt-get -y install curl build-essential python python-dev openjdk-8-jdk
-./pants run beaker-server/src/main/scala:bin --jvm-run-jvm-options="${opts}"
+eval ./pants run beaker-server/src/main/scala:bin ${opts}
