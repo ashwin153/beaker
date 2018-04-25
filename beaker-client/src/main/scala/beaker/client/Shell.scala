@@ -1,7 +1,6 @@
 package beaker.client
 
 import beaker.server.protobuf.{Revision, View}
-
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.Console._
@@ -27,35 +26,53 @@ object Shell extends App {
   while (this.continue) {
     print(s"${ GREEN }${ this.address.head }:${ this.address.last }>${ RESET } ")
     StdIn.readLine().split(" ").toList match {
-      case "get" :: keys => dump(this.client.get(keys.toSet))
-      case "network" :: Nil => dump(this.client.network())
-      case "help" :: _ => println(this.usage)
-      case "put" :: key :: value :: Nil => dump(this.client.put(key, value))
-      case "print" :: Nil => Await.result(this.client.foreach(dump), Duration.Inf)
+      case "get" :: keys => format(this.client.get(keys.toSet))
+      case "network" :: Nil => format(this.client.network())
+      case "help" :: _ => format(this.usage)
+      case "put" :: key :: value :: Nil => format(this.client.put(key, value))
+      case "print" :: Nil => Await.result(this.client.foreach(format), Duration.Inf)
       case "quit" :: _ => this.continue = false
-      case _ => println(this.usage)
+      case _ => format(this.usage)
     }
   }
 
   /**
-   * Prints the key-value pair to standard out.
-   *
-   * @param key Key.
-   * @param revision Revision.
+   *get
+   * @param any
+   * @return
    */
-  def dump(key: Key, revision: Revision): Unit =
-    println(s"${ key.padTo(25, " ") }${ "%03d".format(revision.version) }${ revision.value }")
+  def format(any: Any): Unit = any match {
+    case x: Try[_] => format(x)
+    case x: Map[Key, Revision] => format(x)
+    case (key: Key, revision: Revision) => format(key, revision)
+    case x => println(x)
+  }
 
   /**
-   * Prints the result of the request to standard out.
    *
-   * @param request Request.
+   * @param x
+   * @tparam T
+   * @return
    */
-  def dump[T](request: Try[T]): Unit = request match {
-    case Success(x: Map[Key, Revision]) => x foreach { case (k, r) => dump(k, r) }
-    case Success(x: View) => println(x)
-    case Success(_) =>
+  def format[T](x: Try[T]): Unit = x match {
+    case Success(s) => format(s)
     case Failure(e) => println(s"${ RED }${ e.getMessage }${ RESET }")
   }
+
+  /**
+   *
+   * @param key
+   * @param revision
+   */
+  def format(key: Key, revision: Revision): Unit =
+    println("%-25s %03d %s".format(key, revision.version, revision.value))
+
+  /**
+   *
+   * @param entries
+   * @return
+   */
+  def format(entries: Map[Key, Revision]): Unit =
+    println(entries map { case (k, r) => format(k, r) } mkString "\n")
 
 }
