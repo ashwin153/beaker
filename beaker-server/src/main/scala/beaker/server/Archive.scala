@@ -30,26 +30,6 @@ case class Archive(
   }
 
   /**
-   * Asynchronously retrieves the specified keys. Reads see the effect of all completed writes.
-   *
-   * @param keys Keys to retrieved.
-   * @param ec Execution context.
-   * @return Retrieved revisions.
-   */
-  def read(keys: Set[Key])(implicit ec: ExecutionContext): Future[Map[Key, Revision]] =
-    executor.submit(Read(keys))(_ => this.database.read(keys))
-
-  /**
-   * Asynchronously applies the specified changes.
-   *
-   * @param changes Changes to apply.
-   * @param ec Execution context.
-   * @return Whether or not the changes were applied.
-   */
-  def write(changes: Map[Key, Revision])(implicit ec: ExecutionContext): Future[Unit] =
-    commit(Transaction(Map.empty, changes))
-
-  /**
    * Asynchronously commits the transaction. Transactions are atomic, consistent and isolated.
    *
    * @param transaction Transaction to commit.
@@ -58,6 +38,16 @@ case class Archive(
    */
   def commit(transaction: Transaction)(implicit ec: ExecutionContext): Future[Unit] =
     executor.submit(Commit(transaction))(_ => this.database.commit(transaction))
+
+  /**
+   * Asynchronously retrieves the specified keys. Reads see the effect of all completed writes.
+   *
+   * @param keys Keys to retrieved.
+   * @param ec Execution context.
+   * @return Retrieved revisions.
+   */
+  def read(keys: Set[Key])(implicit ec: ExecutionContext): Future[Map[Key, Revision]] =
+    executor.submit(Read(keys))(_ => this.database.read(keys))
 
   /**
    * Asynchronously scans the database. Scans do not prevent concurrent writes; therefore, they are
@@ -80,6 +70,16 @@ case class Archive(
         case Failure(e) => Success(stream.onError(e))
       })
   }
+
+  /**
+   * Asynchronously applies the specified changes.
+   *
+   * @param changes Changes to apply.
+   * @param ec Execution context.
+   * @return Whether or not the changes were applied.
+   */
+  def write(changes: Map[Key, Revision])(implicit ec: ExecutionContext): Future[Unit] =
+    commit(Transaction(Map.empty, changes))
 
 }
 

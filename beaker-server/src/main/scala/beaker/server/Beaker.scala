@@ -23,11 +23,11 @@ case class Beaker(
   proposer: Proposer
 ) extends BeakerGrpc.Beaker {
 
-  private[this] val configuring : mutable.Map[View, Task]           = mutable.Map.empty
-  private[this] val proposing   : mutable.Map[Transaction, Task]    = mutable.Map.empty
-  private[this] val promised    : mutable.Set[Proposal]             = mutable.Set.empty
-  private[this] val accepted    : mutable.Set[Proposal]             = mutable.Set.empty
-  private[this] val learned     : mutable.Map[Proposal, Int]        = mutable.Map.empty
+  private[this] val configuring: mutable.Map[View, Task] = mutable.Map.empty
+  private[this] val proposing: mutable.Map[Transaction, Task] = mutable.Map.empty
+  private[this] val promised: mutable.Set[Proposal] = mutable.Set.empty
+  private[this] val accepted: mutable.Set[Proposal] = mutable.Set.empty
+  private[this] val learned: mutable.Map[Proposal, Int] = mutable.Map.empty
 
   /**
    * Closes the archive and the proposer.
@@ -35,52 +35,6 @@ case class Beaker(
   def close(): Unit = {
     this.archive.close()
     this.proposer.close()
-  }
-
-  override def get(keys: Keys): Future[Revisions] =
-    this.archive.read(keys.names.toSet) map Revisions.apply
-
-  override def scan(revisions: StreamObserver[Revisions]): StreamObserver[Range] =
-    this.archive.scan(revisions)
-
-  override def network(void: Void): Future[View] =
-    Future(this.proposer.view)
-
-  override def reconfigure(configuration: Configuration): Future[Result] = synchronized {
-    // Asynchronously propose the new view.
-    val view = View(this.proposer.next(), configuration)
-    val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
-    val task = Task(this.proposer.consensus(proposal))
-    this.configuring += view -> task
-    task.future map { _ => Result(true) } recover { case _ => Result(false) }
-  }
-
-  override def propose(transaction: Transaction): Future[Result] = synchronized {
-    // Asynchronously propose the transaction with the current view.
-    val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
-    val task = Task(this.proposer.consensus(proposal))
-    this.proposing += transaction -> task
-    task.future map { _ => Result(true) } recover { case _ => Result(false) }
-  }
-
-  override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
-    this.promised.find(_ |> proposal) match {
-      case Some(r) =>
-        // If a promise has been made to a newer proposal, its ballot is returned.
-        Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
-      case None =>
-        // Otherwise, any older accepted proposals are merged together into a promise or the
-        // proposal is promised with the zero ballot if no older proposals have been accepted.
-        val promise = this.accepted.filter(_ <| proposal)
-          .reduceOption(_ merge _)
-          .getOrElse(proposal.withBallot(Ballot.defaultInstance))
-          .withView(this.proposer.view max proposal.view)
-
-        // Promises not to accept any proposal that is older than the promised proposal.
-        this.promised --= this.promised.filter(_ <| proposal)
-        this.promised += promise.withBallot(proposal.ballot)
-        Future(promise)
-    }
   }
 
   override def accept(proposal: Proposal): Future[Result] = synchronized {
@@ -94,6 +48,10 @@ case class Beaker(
       // Otherwise, it rejects the proposal.
       Future(Result(false))
     }
+  }
+
+  override def get(keys: Keys): Future[Revisions] = {
+    this.archive.read(keys.names.toSet) map Revisions.apply
   }
 
   override def learn(proposal: Proposal): Future[Void] = synchronized {
@@ -120,6 +78,51 @@ case class Beaker(
     }
 
     Future(Void())
+  }
+
+  override def network(void: Void): Future[View] = {
+    Future(this.proposer.view)
+  }
+
+  override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
+    this.promised.find(_ |> proposal) match {
+      case Some(r) =>
+        // If a promise has been made to a newer proposal, its ballot is returned.
+        Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
+      case None =>
+        // Otherwise, any older accepted proposals are merged together into a promise or the
+        // proposal is promised with the zero ballot if no older proposals have been accepted.
+        val promise = this.accepted.filter(_ <| proposal)
+          .reduceOption(_ merge _)
+          .getOrElse(proposal.withBallot(Ballot.defaultInstance))
+          .withView(this.proposer.view max proposal.view)
+
+        // Promises not to accept any proposal that is older than the promised proposal.
+        this.promised --= this.promised.filter(_ <| proposal)
+        this.promised += promise.withBallot(proposal.ballot)
+        Future(promise)
+    }
+  }
+
+  override def propose(transaction: Transaction): Future[Result] = synchronized {
+    // Asynchronously propose the transaction with the current view.
+    val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
+    val task = Task(this.proposer.consensus(proposal))
+    this.proposing += transaction -> task
+    task.future map { _ => Result(true) } recover { case _ => Result(false) }
+  }
+
+  override def reconfigure(configuration: Configuration): Future[Result] = synchronized {
+    // Asynchronously propose the new view.
+    val view = View(this.proposer.next(), configuration)
+    val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
+    val task = Task(this.proposer.consensus(proposal))
+    this.configuring += view -> task
+    task.future map { _ => Result(true) } recover { case _ => Result(false) }
+  }
+
+  override def scan(revisions: StreamObserver[Revisions]): StreamObserver[Range] = {
+    this.archive.scan(revisions)
   }
 
 }

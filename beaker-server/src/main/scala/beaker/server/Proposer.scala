@@ -5,6 +5,7 @@ import beaker.common.concurrent.Locking
 import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage.Local
+
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
@@ -28,54 +29,8 @@ case class Proposer(
   backoff: Duration
 ) extends Locking {
 
-  private[this] val round   : AtomicLong            = new AtomicLong(1)
-  private[this] val current : AtomicReference[View] = new AtomicReference(View.defaultInstance)
-
-  /**
-   * Closes all acceptors and learners.
-   */
-  def close(): Unit = {
-    this.acceptors.close()
-    this.learners.close()
-  }
-
-  /**
-   * Atomically returns the current view of the configuration.
-   *
-   * @return Current view.
-   */
-  def view: View = shared {
-    this.current.get
-  }
-
-  /**
-   * Atomically returns the latest configuration.
-   *
-   * @return Current configuration.
-   */
-  def configuration: Configuration = shared {
-    this.current.get.configuration
-  }
-
-  /**
-   * Atomically reconfigures the acceptors and learners.
-   *
-   * @param view Updated view.
-   */
-  def reconfigure(view: View): Unit = exclusive {
-    if (this.current.get < view) {
-      this.acceptors.update(view.configuration.acceptors)
-      this.learners.update(view.configuration.learners)
-      this.current.set(view)
-    }
-  }
-
-  /**
-   * Returns the next ballot.
-   *
-   * @return Next ballot.
-   */
-  def next(): Ballot = after(Ballot.defaultInstance)
+  private[this] val round: AtomicLong = new AtomicLong(1)
+  private[this] val current: AtomicReference[View] = new AtomicReference(View.defaultInstance)
 
   /**
    * Returns the next ballot after the specified ballot.
@@ -86,6 +41,23 @@ case class Proposer(
   def after(ballot: Ballot): Ballot = {
     val next = this.round.getAndUpdate(r => 1 + (r max ballot.round max this.view.ballot.round))
     Ballot(next, this.id)
+  }
+
+  /**
+   * Closes all acceptors and learners.
+   */
+  def close(): Unit = {
+    this.acceptors.close()
+    this.learners.close()
+  }
+
+  /**
+   * Atomically returns the latest configuration.
+   *
+   * @return Current configuration.
+   */
+  def configuration: Configuration = shared {
+    this.current.get.configuration
   }
 
   /**
@@ -139,6 +111,35 @@ case class Proposer(
         }
       }
     }
+  }
+
+  /**
+   * Returns the next ballot.
+   *
+   * @return Next ballot.
+   */
+  def next(): Ballot = after(Ballot.defaultInstance)
+
+  /**
+   * Atomically reconfigures the acceptors and learners.
+   *
+   * @param view Updated view.
+   */
+  def reconfigure(view: View): Unit = exclusive {
+    if (this.current.get < view) {
+      this.acceptors.update(view.configuration.acceptors)
+      this.learners.update(view.configuration.learners)
+      this.current.set(view)
+    }
+  }
+
+  /**
+   * Atomically returns the current view of the configuration.
+   *
+   * @return Current view.
+   */
+  def view: View = shared {
+    this.current.get
   }
 
 }

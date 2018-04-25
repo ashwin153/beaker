@@ -33,30 +33,9 @@ trait Cache extends Database {
    */
   def update(changes: Map[Key, Revision]): Try[Unit]
 
-  override def read(keys: Set[Key]): Try[Map[Key, Revision]] = {
-    fetch(keys) recover { case _ => Map.empty[Key, Revision] } flatMap { hits =>
-      val misses = hits.keySet diff keys
-      if (misses.nonEmpty) {
-        // If any keys missed cache, reload them from the database.
-        this.database.read(misses) map { changes =>
-          update(changes)
-          hits ++ changes
-        }
-      } else {
-        // Otherwise, return the cache hits.
-        Success(hits)
-      }
-    }
-  }
-
-  override def write(changes: Map[Key, Revision]): Try[Unit] = {
-    // Write to the database and then update the cache.
-    this.database.write(changes).andThen(_ => this.update(changes))
-  }
-
-  override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = {
-    // Scan from the underlying database and avoid cache entirely.
-    this.database.scan(after, limit)
+  override def close(): Unit = {
+    // Propagate close to the underlying database.
+    this.database.close()
   }
 
   override def commit(transaction: Transaction): Try[Unit] = {
@@ -74,9 +53,30 @@ trait Cache extends Database {
     }
   }
 
-  override def close(): Unit = {
-    // Propagate close to the underlying database.
-    this.database.close()
+  override def read(keys: Set[Key]): Try[Map[Key, Revision]] = {
+    fetch(keys) recover { case _ => Map.empty[Key, Revision] } flatMap { hits =>
+      val misses = hits.keySet diff keys
+      if (misses.nonEmpty) {
+        // If any keys missed cache, reload them from the database.
+        this.database.read(misses) map { changes =>
+          update(changes)
+          hits ++ changes
+        }
+      } else {
+        // Otherwise, return the cache hits.
+        Success(hits)
+      }
+    }
+  }
+
+  override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = {
+    // Scan from the underlying database and avoid cache entirely.
+    this.database.scan(after, limit)
+  }
+
+  override def write(changes: Map[Key, Revision]): Try[Unit] = {
+    // Write to the database and then update the cache.
+    this.database.write(changes).andThen(_ => this.update(changes))
   }
 
 }

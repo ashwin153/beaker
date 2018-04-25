@@ -2,10 +2,11 @@ package beaker.client
 
 import beaker.common.concurrent.Locking
 import beaker.server.protobuf.Address
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits._
-import scala.util.{Failure, Random, Success, Try}
+import scala.util._
 
 /**
  * A thread-safe collection of clients.
@@ -13,50 +14,6 @@ import scala.util.{Failure, Random, Success, Try}
  * @param members Cluster member.
  */
 class Cluster(members: mutable.Map[Address, Client]) extends Locking {
-
-  /**
-   * Returns the number of members in the cluster.
-   *
-   * @return Number of members.
-   */
-  def size: Int = shared {
-    this.members.size
-  }
-
-  /**
-   * Adds the member to the cluster.
-   *
-   * @param member Member to add.
-   */
-  def join(member: Address): Unit = exclusive {
-    this.members.getOrElseUpdate(member, Client(member))
-  }
-
-  /**
-   * Removes the member from the cluster.
-   *
-   * @param member Member to remove.
-   */
-  def leave(member: Address): Unit = exclusive {
-    this.members.remove(member).foreach(_.close())
-  }
-
-  /**
-   * Updates the members of the cluster.
-   *
-   * @param members Updated members.
-   */
-  def update(members: Seq[Address]): Unit = {
-    this.members.keys.filterNot(members.contains).foreach(leave)
-    members.filterNot(this.members.contains).foreach(join)
-  }
-
-  /**
-   * Closes all members of the cluster.
-   */
-  def close(): Unit = {
-    this.members.keys.foreach(leave)
-  }
 
   /**
    * Performs the request on all members of the cluster.
@@ -79,23 +36,28 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
   }
 
   /**
-   * Performs the request on a random member of the cluster.
-   *
-   * @param request Request to perform.
-   * @return Response.
+   * Closes all members of the cluster.
    */
-  def random[T](request: Client => Try[T]): Try[T] = shared {
-    request(Random.shuffle(this.members.values).head)
+  def close(): Unit = {
+    this.members.keys.foreach(leave)
   }
 
   /**
-   * Asynchronously performs the request on a random member of the cluster.
+   * Adds the member to the cluster.
    *
-   * @param request Request to perform.
-   * @return Response.
+   * @param member Member to add.
    */
-  def randomAsync[T](request: Client => Future[T]): Future[T] = shared {
-    request(Random.shuffle(this.members.values).head)
+  def join(member: Address): Unit = exclusive {
+    this.members.getOrElseUpdate(member, Client(member))
+  }
+
+  /**
+   * Removes the member from the cluster.
+   *
+   * @param member Member to remove.
+   */
+  def leave(member: Address): Unit = exclusive {
+    this.members.remove(member).foreach(_.close())
   }
 
   /**
@@ -123,6 +85,45 @@ class Cluster(members: mutable.Map[Address, Client]) extends Locking {
     val requests = clients.map(c => request(c) map { Success(_) } recover { case x => Failure(x) })
     val responses = Future.sequence(requests).map(_.filter(_.isSuccess).map(_.get))
     responses.filter(_.size >= this.members.size / 2 + 1)
+  }
+
+  /**
+   * Performs the request on a random member of the cluster.
+   *
+   * @param request Request to perform.
+   * @return Response.
+   */
+  def random[T](request: Client => Try[T]): Try[T] = shared {
+    request(Random.shuffle(this.members.values).head)
+  }
+
+  /**
+   * Asynchronously performs the request on a random member of the cluster.
+   *
+   * @param request Request to perform.
+   * @return Response.
+   */
+  def randomAsync[T](request: Client => Future[T]): Future[T] = shared {
+    request(Random.shuffle(this.members.values).head)
+  }
+
+  /**
+   * Returns the number of members in the cluster.
+   *
+   * @return Number of members.
+   */
+  def size: Int = shared {
+    this.members.size
+  }
+
+  /**
+   * Updates the members of the cluster.
+   *
+   * @param members Updated members.
+   */
+  def update(members: Seq[Address]): Unit = {
+    this.members.keys.filterNot(members.contains).foreach(leave)
+    members.filterNot(this.members.contains).foreach(join)
   }
 
 }

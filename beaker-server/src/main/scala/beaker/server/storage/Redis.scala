@@ -26,6 +26,11 @@ object Redis {
     expiration: Duration
   ) extends server.Cache {
 
+    override def close(): Unit = {
+      this.client.close()
+      super.close()
+    }
+
     override def fetch(keys: Set[Key]): Try[Map[Key, Revision]] = Try {
       val seq = keys.toSeq
       seq.zip(this.client.mget(seq: _*).asScala)
@@ -36,11 +41,6 @@ object Redis {
     override def update(changes: Map[Key, Revision]): Try[Unit] = Try {
       val values = changes.mapValues(r => new String(r.toByteArray, Cache.Repr))
       values foreach { case (k, v) => this.client.setex(k, this.expiration.toSeconds.toInt, v) }
-    }
-
-    override def close(): Unit = {
-      this.client.close()
-      super.close()
     }
 
   }

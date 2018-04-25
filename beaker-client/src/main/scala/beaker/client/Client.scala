@@ -2,8 +2,10 @@ package beaker.client
 
 import beaker.common.util._
 import beaker.server.protobuf._
+
 import io.grpc.stub.StreamObserver
 import io.grpc.{Context, ManagedChannel, ManagedChannelBuilder}
+
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.{Future, Promise}

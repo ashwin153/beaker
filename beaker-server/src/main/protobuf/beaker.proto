@@ -2,6 +2,24 @@ syntax = "proto2";
 package beaker.server.protobuf;
 
 /**
+ * A response indicating whether or not a request completed successfully.
+ *
+ * @param Request result.
+ */
+message Result {
+
+  required bool successful = 1;
+
+}
+
+/**
+ * An empty response.
+ */
+message Void {
+
+}
+
+/**
  * A collection of keys.
  *
  * @param names Names of keys.
@@ -63,19 +81,6 @@ message Transaction {
 }
 
 /**
- * A monotonically-increasing, globally-unique sequence number. Defaults to the zero ballot.
- *
- * @param round Locally-unique number. [0, ∞)
- * @param id Globally-unique number.
- */
-message Ballot {
-
-  required int64 round = 1 [default = 0];
-  required int64 id = 2 [default = 0];
-
-}
-
-/**
  * A network location.
  *
  * @param name Hostname.
@@ -98,6 +103,19 @@ message Configuration {
 
   repeated Address acceptors = 2;
   repeated Address learners = 3;
+
+}
+
+/**
+ * A monotonically-increasing, globally-unique sequence number. Defaults to the zero ballot.
+ *
+ * @param round Locally-unique number. [0, ∞)
+ * @param id Globally-unique number.
+ */
+message Ballot {
+
+  required int64 round = 1 [default = 0];
+  required int64 id = 2 [default = 0];
 
 }
 
@@ -132,27 +150,15 @@ message Proposal {
 }
 
 /**
- * A response indicating whether or not a request completed successfully.
- *
- * @param Request result.
- */
-message Result {
-
-  required bool successful = 1;
-
-}
-
-/**
- * An empty response.
- */
-message Void {
-
-}
-
-/**
  * A distributed, transactional key-value store.
  */
 service Beaker {
+
+  /**
+   * Requests a vote for a proposal. Beakers cast a vote for a proposal if and only if a promise has
+   * not been made to a newer proposal.
+   */
+  rpc Accept(Proposal) returns (Result);
 
   /**
    * Returns the latest revision of each key.
@@ -160,24 +166,16 @@ service Beaker {
   rpc Get(Keys) returns (Revisions);
 
   /**
-   * Returns the latest revisions of every key.
+   * Casts a vote for a proposal. Beakers commit the proposal's transactions and repairs of once a
+   * quorum of the acceptors in the proposal's configuration vote for it. If the proposal has a
+   * newer configuration, then update the current configuration.
    */
-  rpc Scan(stream Range) returns (stream Revisions);
+  rpc Learn(Proposal) returns (Void);
 
   /**
    * Returns the current view of the network configuration.
    */
   rpc Network(Void) returns (View);
-
-  /**
-   * Attempts to consistently update the network configuration.
-   */
-  rpc Reconfigure(Configuration) returns (Result);
-
-  /**
-   * Conditionally applies its changes if and only if it depends on the latest versions.
-   */
-  rpc Propose(Transaction) returns (Result);
 
   /**
    * Makes a promise not to accept any proposal that conflicts with the proposal it returns and has
@@ -188,16 +186,18 @@ service Beaker {
   rpc Prepare(Proposal) returns (Proposal);
 
   /**
-   * Requests a vote for a proposal. Beakers cast a vote for a proposal if and only if a promise has
-   * not been made to a newer proposal.
+   * Conditionally applies its changes if and only if it depends on the latest versions.
    */
-  rpc Accept(Proposal) returns (Result);
+  rpc Propose(Transaction) returns (Result);
 
   /**
-   * Casts a vote for a proposal. Beakers commit the proposal's transactions and repairs of once a
-   * quorum of the acceptors in the proposal's configuration vote for it. If the proposal has a
-   * newer configuration, then update the current configuration.
+   * Attempts to consistently update the network configuration.
    */
-  rpc Learn(Proposal) returns (Void);
+  rpc Reconfigure(Configuration) returns (Result);
+
+  /**
+   * Returns the latest revisions of every key.
+   */
+  rpc Scan(stream Range) returns (stream Revisions);
 
 }

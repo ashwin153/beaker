@@ -24,11 +24,14 @@ class Task(body: => Try[Unit]) {
   this.thread.start()
 
   /**
-   * Returns a future that completes when the task terminates.
-   *
-   * @return Computation handle.
+   * Completes the task unsuccessfully.
    */
-  def future: Future[Unit] = this.promise.future
+  def cancel(): Unit = synchronized {
+    if (!this.promise.isCompleted) {
+      this.thread.interrupt()
+      this.promise.failure(Task.Cancelled)
+    }
+  }
 
   /**
    * Completes the task successfully.
@@ -40,16 +43,12 @@ class Task(body: => Try[Unit]) {
     }
   }
 
-
   /**
-   * Completes the task unsuccessfully.
+   * Returns a future that completes when the task terminates.
+   *
+   * @return Computation handle.
    */
-  def cancel(): Unit = synchronized {
-    if (!this.promise.isCompleted) {
-      this.thread.interrupt()
-      this.promise.failure(Task.Cancelled)
-    }
-  }
+  def future: Future[Unit] = this.promise.future
 
 }
 

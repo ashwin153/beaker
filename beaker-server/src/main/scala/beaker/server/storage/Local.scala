@@ -33,10 +33,6 @@ object Local {
       Try(this.underlying.filterKeys(keys.contains).toMap)
     }
 
-    override def write(changes: Map[Key, Revision]): Try[Unit] = exclusive {
-      Try(this.underlying ++= changes)
-    }
-
     override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = shared {
       val range = after match {
         case Some(k) => this.underlying.iteratorFrom(k).drop(1)
@@ -44,6 +40,10 @@ object Local {
       }
 
       Try(range.take(limit).toMap)
+    }
+
+    override def write(changes: Map[Key, Revision]): Try[Unit] = exclusive {
+      Try(this.underlying ++= changes)
     }
 
   }
@@ -96,14 +96,14 @@ object Local {
     underlying: caffeine.Cache[Key, Revision]
   ) extends server.Cache {
 
+    override def close(): Unit =
+      this.underlying.invalidateAll()
+
     override def fetch(keys: Set[Key]): Try[Map[Key, Revision]] =
       Try(this.underlying.getAllPresent(keys.asJava).asScala.toMap)
 
     override def update(changes: Map[Key, Revision]): Try[Unit] =
       Try(this.underlying.putAll(changes.asJava))
-
-    override def close(): Unit =
-      this.underlying.invalidateAll()
 
   }
 

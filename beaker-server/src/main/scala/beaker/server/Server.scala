@@ -30,6 +30,26 @@ case class Server(
     .build()
 
   /**
+   * Terminates the server.
+   */
+  def close(): Unit = {
+    ensure {
+      // Remove the instance from the configuration.
+      val configuration = this.beaker.proposer.configuration
+      val acceptors = configuration.acceptors.remove(this.address)
+      val learners = configuration.learners.remove(this.address)
+      val updated  = configuration.copy(acceptors = acceptors, learners = learners)
+
+      // Reconfigure the instance out of the configuration.
+      val cluster = Cluster(configuration.acceptors)
+      cluster.random(_.reconfigure(updated)) andThen { _ => cluster.close() }
+    } map { _ =>
+      // Shutdown the instance.
+      this.underlying.shutdown()
+    }
+  }
+
+  /**
    * Asynchronously serves the beaker.
    */
   def serve(): Unit = {
@@ -67,26 +87,6 @@ case class Server(
 
         // Terminate the connection to the seed.
         remote.close()
-    }
-  }
-
-  /**
-   * Terminates the server.
-   */
-  def close(): Unit = {
-    ensure {
-      // Remove the instance from the configuration.
-      val configuration = this.beaker.proposer.configuration
-      val acceptors = configuration.acceptors.remove(this.address)
-      val learners = configuration.learners.remove(this.address)
-      val updated  = configuration.copy(acceptors = acceptors, learners = learners)
-
-      // Reconfigure the instance out of the configuration.
-      val cluster = Cluster(configuration.acceptors)
-      cluster.random(_.reconfigure(updated)) andThen { _ => cluster.close() }
-    } map { _ =>
-      // Shutdown the instance.
-      this.underlying.shutdown()
     }
   }
 

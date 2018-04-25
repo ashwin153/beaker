@@ -27,18 +27,6 @@ object SQL {
     // Verify that the table schema exists.
     require(perform(this.dialect.create).isSuccess, "Unable to create table schema.")
 
-    override def read(keys: Set[Key]): Try[Map[Key, Revision]] =
-      if (keys.isEmpty) Success(Map.empty) else perform(this.dialect.select(_, keys))
-
-    override def write(changes: Map[Key, Revision]): Try[Unit] =
-      if (changes.isEmpty) Success(Map.empty) else perform(this.dialect.upsert(_, changes))
-
-    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] =
-      perform(this.dialect.range(_, after, limit))
-
-    override def close(): Unit =
-      this.pool.close()
-
     /**
      * Performs the specified operation on the database and returns the result.
      *
@@ -67,6 +55,18 @@ object SQL {
         Failure(e)
       }
     }
+
+    override def close(): Unit =
+      this.pool.close()
+
+    override def read(keys: Set[Key]): Try[Map[Key, Revision]] =
+      if (keys.isEmpty) Success(Map.empty) else perform(this.dialect.select(_, keys))
+
+    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] =
+      perform(this.dialect.range(_, after, limit))
+
+    override def write(changes: Map[Key, Revision]): Try[Unit] =
+      if (changes.isEmpty) Success(Map.empty) else perform(this.dialect.upsert(_, changes))
 
   }
 

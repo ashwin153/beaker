@@ -3,39 +3,18 @@ package beaker.server
 import beaker.server.Database._
 import beaker.server.protobuf._
 
-import java.io.Closeable
 import scala.math.Ordering.Implicits._
 import scala.util.{Failure, Try}
 
 /**
  * A key-value store.
  */
-trait Database extends Closeable {
+trait Database {
 
   /**
-   * Returns the revision of the specified keys.
-   *
-   * @param keys Keys to read.
-   * @return Revision of each key.
+   * Closes the database.
    */
-  def read(keys: Set[Key]): Try[Map[Key, Revision]]
-
-  /**
-   * Applies the changes to the database.
-   *
-   * @param changes Changes to apply.
-   * @return Whether or not changes were applied.
-   */
-  def write(changes: Map[Key, Revision]): Try[Unit]
-
-  /**
-   * Returns the revisions of the first limit keys after, but not including, the specified key.
-   *
-   * @param after Exclusive initial key.
-   * @param limit Maximum number to return.
-   * @return Revisions of keys in range.
-   */
-  def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]]
+  def close(): Unit
 
   /**
    * Attempts to commit the transaction on the database. Transactions may be committed if and only
@@ -57,6 +36,31 @@ trait Database extends Closeable {
       if (invalid.isEmpty) write(updates) else Failure(Database.Conflicts(invalid))
     }
   }
+
+  /**
+   * Returns the revision of the specified keys.
+   *
+   * @param keys Keys to read.
+   * @return Revision of each key.
+   */
+  def read(keys: Set[Key]): Try[Map[Key, Revision]]
+
+  /**
+   * Returns the revisions of the first limit keys after, but not including, the specified key.
+   *
+   * @param after Exclusive initial key.
+   * @param limit Maximum number to return.
+   * @return Revisions of keys in range.
+   */
+  def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]]
+
+  /**
+   * Applies the changes to the database.
+   *
+   * @param changes Changes to apply.
+   * @return Whether or not changes were applied.
+   */
+  def write(changes: Map[Key, Revision]): Try[Unit]
 
 }
 

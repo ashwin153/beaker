@@ -13,22 +13,6 @@ trait Locking {
   private[this] val lock = new StampedLock
 
   /**
-   * Returns the result of the provided code block, after acquiring a shared read-lock. Because
-   * shared locks can be acquired concurrently, the provided function must be side-effect free.
-   *
-   * @param block Critical section; side-effect free.
-   * @return Result of block.
-   */
-  protected[this] def shared[T](block: => T): T = {
-    val stamp = this.lock.readLock()
-    try {
-      block
-    } finally {
-      this.lock.unlockRead(stamp)
-    }
-  }
-
-  /**
    * Returns the result of the provided code block, after acquiring an exclusive write-lock. Because
    * exclusive locks may not be acquired concurrently, the provided function may have side-effects.
    *
@@ -56,6 +40,22 @@ trait Locking {
     val stamp = this.lock.tryOptimisticRead()
     val value = block
     if (!this.lock.validate(stamp)) shared(block) else value
+  }
+
+  /**
+   * Returns the result of the provided code block, after acquiring a shared read-lock. Because
+   * shared locks can be acquired concurrently, the provided function must be side-effect free.
+   *
+   * @param block Critical section; side-effect free.
+   * @return Result of block.
+   */
+  protected[this] def shared[T](block: => T): T = {
+    val stamp = this.lock.readLock()
+    try {
+      block
+    } finally {
+      this.lock.unlockRead(stamp)
+    }
   }
 
 }
