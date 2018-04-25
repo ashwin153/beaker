@@ -65,7 +65,7 @@ object Shell extends App {
    * @param revision
    */
   def format(key: Key, revision: Revision): Unit =
-    println("%-25s %03d %s".format(key, revision.version, revision.value))
+    println("%-25s %05d %s".format(key, revision.version, revision.value))
 
   /**
    *

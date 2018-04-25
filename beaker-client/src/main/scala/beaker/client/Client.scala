@@ -106,6 +106,8 @@ class Client(channel: ManagedChannel) {
    * @return Updated versions.
    */
   def put(changes: Map[Key, Value]): Try[Map[Key, Version]] = {
+    println(get(changes.keySet))
+    println(get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes)))
     get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes))
   }
 
@@ -116,9 +118,8 @@ class Client(channel: ManagedChannel) {
    * @param value Change to apply.
    * @return Updated version.
    */
-  def put(key: Key, value: Value): Try[Version] = {
+  def put(key: Key, value: Value): Try[Version] =
     put(Map(key -> value)).flatMap(_.get(key).toTry)
-  }
 
   /**
    * Attempts to consistently update the network configuration.
