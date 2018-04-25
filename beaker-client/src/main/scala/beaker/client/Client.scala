@@ -96,6 +96,7 @@ class Client(channel: ManagedChannel) {
     val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
     val result = Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
+    println(result)
     result.filter(_.successful).map(_ => wset.mapValues(_.version))
   }
 
@@ -105,11 +106,8 @@ class Client(channel: ManagedChannel) {
    * @param changes Changes to apply.
    * @return Updated versions.
    */
-  def put(changes: Map[Key, Value]): Try[Map[Key, Version]] = {
-    println(get(changes.keySet))
-    println(get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes)))
+  def put(changes: Map[Key, Value]): Try[Map[Key, Version]] =
     get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes))
-  }
 
   /**
    * Conditionally applies the change and returns the updated version.
