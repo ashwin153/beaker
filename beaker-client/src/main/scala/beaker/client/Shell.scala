@@ -81,8 +81,8 @@ object Shell extends App {
    * @param any Value.
    */
   def dump(any: Any): Unit = any match {
-    case (k: Key, r: Revision) => println(s"$CYAN%06d$RESET %-50s %s".format(r.version, k, r.value))
-    case (k: Key, v: Version) => println(s"$CYAN%06d$RESET %-50s".format(v, k))
+    case (k: Key, r: Revision) => println(s"$CYAN%06d$RESET %-80s %s".format(r.version, k, r.value))
+    case (k: Key, v: Version) => dump(k, Revision(v, ""))
     case Success(x) => dump(x)
     case Failure(x) => println(s"${ RED }Failure. Please try again.${ RESET }")
     case x: Map[_, _] => x foreach { case (k, r) => dump(k, r) }
