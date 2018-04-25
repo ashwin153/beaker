@@ -106,7 +106,7 @@ class Client(channel: ManagedChannel) {
    *
    * @param f Function to apply.
    * @param from Inclusive initial key.
-   * @param to Inclusive terminal key.
+   * @param to Exclusive terminal key.
    * @param by Chunk size.
    * @return Asynchronous result.
    */

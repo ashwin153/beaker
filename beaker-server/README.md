@@ -5,9 +5,7 @@ providing a static configuration file, ```application.conf```, or by explicitly 
 parameters from the command line.
 
 ```bash
-git clone https://github.com/ashwin153/beaker && cd beaker/
-
-./run.sh
+./server.sh
   -p 9091 \                                     # Port number. (9090)
   -c /path/to/application.conf \                # Configuration file. (reference.conf)
   -o beaker.server.seed=localhost:9090          # Configuration overrides.
