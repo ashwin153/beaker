@@ -6,13 +6,8 @@ import scala.io.StdIn
 
 object Main extends App {
 
-  //
-  if (args.length != 1)
-    println("Usage: beaker host:port")
-
-  //
-  val address  = args(0).split(":")
-  val client   = Client(this.address(0), this.address(1).toInt)
+  val address  = if (args.isEmpty) Seq("localhost", "9090") else args(0).split(":").toSeq
+  val client   = Client(this.address.head, this.address.last.toInt)
   var continue = true
 
   while (this.continue) {
