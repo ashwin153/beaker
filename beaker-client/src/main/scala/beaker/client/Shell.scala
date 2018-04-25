@@ -85,13 +85,13 @@ object Shell extends App {
     case (k: Key, r: Revision) =>
       println(s"$CYAN%06d$RESET %-80s %s".format(r.version, k, r.value))
     case (k: Key, v: Version) =>
-      dump(k, Revision(v, ""))
+      dump((k, Revision(v, "")))
     case Success(x) =>
       dump(x)
     case Failure(x) =>
       println(s"${ RED }Failure. Please try again.${ RESET }")
     case x: Map[_, _] =>
-      x foreach { case (k, r) => dump(k, r) }
+      x foreach { case (k, r) => dump((k, r)) }
     case View(b, Configuration(a, l)) =>
       println(
         s"""${ YELLOW }ballot$RESET    ${ "%019d %019d".format(b.round, b.id)}
