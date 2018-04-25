@@ -21,7 +21,7 @@ message Keys {
 message Range {
 
   optional string after = 1;
-  required uint32 limit = 2 [default = 10000];
+  required int32 limit = 2 [default = 10000];
 
 }
 
@@ -33,7 +33,7 @@ message Range {
  */
 message Revision {
 
-  required uint64 version = 1 [default = 0];
+  required int64 version = 1 [default = 0];
   required string value = 2;
 
 }
@@ -57,7 +57,7 @@ message Revisions {
  */
 message Transaction {
 
-  map<string, uint64> depends = 1;
+  map<string, int64> depends = 1;
   map<string, Revision> changes = 2;
 
 }
@@ -70,8 +70,8 @@ message Transaction {
  */
 message Ballot {
 
-  required uint32 round = 1 [default = 0];
-  required uint64 id = 2 [default = 0];
+  required int32 round = 1 [default = 0];
+  required int64 id = 2 [default = 0];
 
 }
 
@@ -84,7 +84,7 @@ message Ballot {
 message Address {
 
   required string name = 1;
-  required uint32 port = 2;
+  required int32 port = 2;
 
 }
 

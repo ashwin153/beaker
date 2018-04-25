@@ -94,7 +94,7 @@ object Shell extends App {
       x foreach { case (k, r) => dump(k, r) }
     case View(b, Configuration(a, l)) =>
       println(
-        s"""${ YELLOW }ballot$RESET    ${ "%10d%10d".format(b.round, b.id)}
+        s"""${ YELLOW }ballot$RESET    ${ "%010d%010d".format(b.round, b.id)}
            |${ YELLOW }acceptors$RESET ${ a.map(x => s"${ x.name }:${ x.port }").mkString(", ") }
            |${ YELLOW }learners$RESET  ${ l.map(x => s"${ x.name }:${ x.port }").mkString(", ") }
          """.stripMargin)
