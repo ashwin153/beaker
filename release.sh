@@ -11,7 +11,7 @@ targets=(
 )
 
 artifacts=(
-  "beaker-cluster_2.12"
+  "beaker-client_2.12"
   "beaker-common_2.12"
   "beaker-protobuf"
   "beaker-server_2.12"
