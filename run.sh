@@ -1,12 +1,17 @@
 #!/bin/bash
 ####################################################################################################
-#                                        Parse Configuration                                       #
+#                                    Install Pants Dependencies                                    #
+#              https://github.com/pantsbuild/pants/blob/master/README.md#requirements              #
+####################################################################################################
+sudo apt-get update && sudo apt-get -y install curl build-essential python python-dev openjdk-8-jdk
+
+####################################################################################################
+#                                         Bootstrap Server                                         #
 #  https://github.com/ashwin153/beaker/blob/master/beaker-server/src/main/resources/reference.conf #
 ####################################################################################################
 host=$(hostname -I | cut -d' ' -f1)
 port=9090
-conf=""
-pts=""
+opts=""
 
 while getopts ":hc:dn:o:p:r:" opt; do
   case $opt in
@@ -20,7 +25,7 @@ while getopts ":hc:dn:o:p:r:" opt; do
         echo
         exit 1
         ;;
-    c ) conf="-v ${OPTARG}:/beaker/beaker-server/src/main/resources/application.conf"
+    c ) eval cp ${OPTARG} /beaker-server/src/main/resources/application.conf
         ;;
     o ) opts+="--jvm-run-jvm-options="\""-D${OPTARG}"\"" "
         ;;
@@ -29,10 +34,6 @@ while getopts ":hc:dn:o:p:r:" opt; do
   esac
 done
 
-####################################################################################################
-#                                         Bootstrap Server                                         #
-#                               https://docs.docker.com/get-started/                               #
-####################################################################################################
 opts+="--jvm-run-jvm-options="\""-Dbeaker.server.address=${host}:${port}"\"
-sudo apt-get update && sudo apt-get -y install curl build-essential python python-dev openjdk-8-jdk
 eval ./pants run beaker-server/src/main/scala:bin ${opts}
+rm /beaker-server/src/main/resources/application.conf
