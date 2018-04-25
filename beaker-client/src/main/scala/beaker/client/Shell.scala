@@ -73,6 +73,6 @@ object Shell extends App {
    * @return
    */
   def format(entries: Map[Key, Revision]): Unit =
-    println(entries map { case (k, r) => format(k, r) } mkString "\n")
+    entries foreach { case (k, r) => format(k, r) }
 
 }
