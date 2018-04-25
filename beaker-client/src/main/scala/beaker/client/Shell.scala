@@ -1,11 +1,12 @@
 package beaker.client
 
-import beaker.server.protobuf.{Revision, View}
+import beaker.server.protobuf.{Address, Configuration, Revision}
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.Console._
 import scala.io.StdIn
-import scala.util.{Failure, Success, Try}
+import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object Shell extends App {
 
@@ -14,65 +15,64 @@ object Shell extends App {
     s"""get <key> ...                               Returns the values of the specified keys.
        |network                                     Returns the current network configuration.
        |help                                        Prints this help message.
+       |kill <host>:<port>                          Removes the address from the configuration.
        |put <key> <value> ...                       Updates the values of the specified keys.
        |print                                       Prints the contents of the database.
        |quit                                        Exit.
      """.stripMargin
 
-  val address  = if (args.isEmpty) Seq("localhost", "9090") else args(0).split(":").toSeq
-  val client   = Client(this.address.head, this.address.last.toInt)
-  var continue = true
+  // Connect Client.
+  val address = if (args.isEmpty) Address("localhost", 9090) else args(0).toAddress
+  val client = Client(this.address)
 
+  // REPL.
+  var continue = true
   while (this.continue) {
-    print(s"${ GREEN }${ this.address.head }:${ this.address.last }>${ RESET } ")
+    print(s"${ GREEN }${ this.address.name }:${ this.address.port }>${ RESET } ")
     StdIn.readLine().split(" ").toList match {
-      case "get" :: keys => format(this.client.get(keys.toSet))
-      case "network" :: Nil => format(this.client.network())
-      case "help" :: _ => format(this.usage)
-      case "put" :: key :: value :: Nil => format(this.client.put(key, value))
-      case "print" :: Nil => Await.result(this.client.foreach(format), Duration.Inf)
-      case "quit" :: _ => this.continue = false
-      case _ => format(this.usage)
+      case "get" :: keys =>
+        dump(this.client.get(keys))
+      case "network" :: Nil =>
+        dump(this.client.network())
+      case "help" :: _ =>
+        dump(this.usage)
+      case "kill" :: host :: Nil =>
+        val at = host.toAddress
+        dump(this.client.network().map(_.configuration)
+          .map(x => Configuration(x.acceptors.filter(_ != at), x.learners.filter(_ != at)))
+          .flatMap(this.client.reconfigure))
+      case "put" :: entries =>
+        dump(this.client.put(entries.grouped(2) map { case List(k, v) => k -> v } toMap))
+      case "print" :: Nil =>
+        Await.result(this.client.foreach(dump), Duration.Inf)
+      case "quit" :: _ =>
+        this.continue = false
+      case _ =>
+        dump(this.usage)
     }
   }
 
   /**
-   *get
-   * @param any
-   * @return
+   * Formats and prints the specified value.
+   *
+   * @param any Value.
    */
-  def format(any: Any): Unit = any match {
-    case x: Try[_] => format(x)
-    case x: Map[Key, Revision] => format(x)
-    case (key: Key, revision: Revision) => format(key, revision)
+  def dump(any: Any): Unit = any match {
+    case Success(x) => dump(x)
+    case Failure(x) => println(s"${ RED }${ x.getMessage }${ RESET }")
+    case x: Map[Key, Revision] => x foreach { case (k, r) => dump(k, r) }
+    case (key: Key, revision: Revision) => dump(key, revision)
+    case Unit => println()
     case x => println(x)
   }
 
   /**
+   * Formats and prints the specified key-value pair.
    *
-   * @param x
-   * @tparam T
-   * @return
+   * @param key Key.
+   * @param revision Revision.
    */
-  def format[T](x: Try[T]): Unit = x match {
-    case Success(s) => format(s)
-    case Failure(e) => println(s"${ RED }${ e.getMessage }${ RESET }")
-  }
-
-  /**
-   *
-   * @param key
-   * @param revision
-   */
-  def format(key: Key, revision: Revision): Unit =
+  def dump(key: Key, revision: Revision): Unit =
     println("%-25s %05d %s".format(key, revision.version, revision.value))
-
-  /**
-   *
-   * @param entries
-   * @return
-   */
-  def format(entries: Map[Key, Revision]): Unit =
-    entries foreach { case (k, r) => format(k, r) }
 
 }

@@ -108,6 +108,10 @@ case class Beaker(
       transactions.foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
 
+      // Clear the consensus state.
+      this.promised -= proposal
+      this.accepted -= proposal
+
       // Complete consensus on conflicting transactions and views.
       this.proposing.removeKeys(transactions.contains).values.foreach(_.finish())
       this.proposing.removeKeys(t => transactions.exists(_ ~ t)).values.foreach(_.cancel())

@@ -17,75 +17,6 @@ import scala.util.Try
 class Client(channel: ManagedChannel) {
 
   /**
-   * Closes the underlying channel.
-   */
-  def close(): Unit = this.channel.shutdown()
-
-  /**
-   * Returns the revisions of the keys.
-   *
-   * @param keys Keys to retrieve.
-   * @return Revisions of keys.
-   */
-  def get(keys: Set[Key]): Try[Map[Key, Revision]] = {
-    Try(BeakerGrpc.blockingStub(this.channel).get(Keys(keys.toSeq)).entries)
-  }
-
-  /**
-   * Returns the revision of the key.
-   *
-   * @param key Key to retrieve.
-   * @return Revision of key.
-   */
-  def get(key: Key): Try[Option[Revision]] = {
-    get(Set(key)).map(_.get(key))
-  }
-
-  /**
-   * Asynchronously applies the function to every chunk limit keys at a time.
-   *
-   * @param f Function to apply.
-   * @param by Chunk size.
-   * @return Asynchronous result.
-   */
-  def scan[U](f: Map[Key, Revision] => U, by: Int = 10000): Future[Unit] = {
-    val promise = Promise[Unit]()
-    var range = Range(None, by)
-    val server = new AtomicReference[StreamObserver[Range]]
-
-    // Asynchronously scans the remote beaker and repairs the local beaker.
-    val observer = BeakerGrpc.stub(this.channel).scan(new StreamObserver[Revisions] {
-      override def onError(throwable: Throwable): Unit =
-        promise.failure(throwable)
-
-      override def onCompleted(): Unit =
-        promise.success(())
-
-      override def onNext(revisions: Revisions): Unit = {
-        f(revisions.entries)
-        range = range.withAfter(revisions.entries.keys.max)
-        server.get().onNext(range)
-      }
-    })
-
-    // Block until the local beaker is refreshed.
-    server.set(observer)
-    observer.onNext(range)
-    promise.future
-  }
-
-  /**
-   * Asynchronously applies the function to every key limit keys at a time.
-   *
-   * @param f Function to apply.
-   * @param limit Chunk size.
-   * @return Asynchronous result.
-   */
-  def foreach[U](f: (Key, Revision) => U, limit: Int = 10000): Future[Unit] = {
-    scan(_.foreach(f.tupled), limit)
-  }
-
-  /**
    * Conditionally applies the changes if the dependencies remain unchanged.
    *
    * @param depends Dependencies.
@@ -96,18 +27,48 @@ class Client(channel: ManagedChannel) {
     val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
     val result = Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
-    println(result)
     result.filter(_.successful).map(_ => wset.mapValues(_.version))
   }
 
   /**
-   * Conditionally applies the changes and returns their updated versions.
-   *
-   * @param changes Changes to apply.
-   * @return Updated versions.
+   * Closes the underlying channel.
    */
-  def put(changes: Map[Key, Value]): Try[Map[Key, Version]] =
-    get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes))
+  def close(): Unit = this.channel.shutdown()
+
+  /**
+   * Returns the revision of the key.
+   *
+   * @param key Key to retrieve.
+   * @return Revision of key.
+   */
+  def get(key: Key): Try[Option[Revision]] = get(Set(key)).map(_.get(key))
+
+  /**
+   * Returns the revisions of the keys.
+   *
+   * @param keys Keys to retrieve.
+   * @return Revisions of keys.
+   */
+  def get(keys: Iterable[Key]): Try[Map[Key, Revision]] =
+    Try(BeakerGrpc.blockingStub(this.channel).get(Keys(keys.toSeq)).entries)
+
+  /**
+   * Asynchronously applies the function to every key.
+   *
+   * @param f Function to apply.
+   * @param by Chunk size.
+   * @return Asynchronous result.
+   */
+  def foreach[U](f: (Key, Revision) => U, by: Int = 10000): Future[Unit] =
+    scan(_.foreach(f.tupled), by = by)
+
+  /**
+   * Returns the current view of the network configuration.
+   *
+   * @return Network configuration.
+   */
+  def network(): Try[View] =
+    Try(BeakerGrpc.blockingStub(this.channel).network(Void()))
 
   /**
    * Conditionally applies the change and returns the updated version.
@@ -120,22 +81,68 @@ class Client(channel: ManagedChannel) {
     put(Map(key -> value)).flatMap(_.get(key).toTry)
 
   /**
+   * Conditionally applies the changes and returns their updated versions.
+   *
+   * @param changes Changes to apply.
+   * @return Updated versions.
+   */
+  def put(changes: Map[Key, Value]): Try[Map[Key, Version]] =
+    get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes))
+
+  /**
    * Attempts to consistently update the network configuration.
    *
    * @param configuration Updated configuration.
    * @return Whether or not the reconfiguration was successful.
    */
-  def reconfigure(configuration: Configuration): Try[Unit] = {
+  def reconfigure(configuration: Configuration): Try[Unit] =
     Try(BeakerGrpc.blockingStub(this.channel).reconfigure(configuration)).filter(_.successful)
-  }
 
   /**
-   * Returns the current view of the network configuration.
+   * Asynchronously applies the function to all keys in the specified range in chunks of the
+   * specified size.
    *
-   * @return Network configuration.
+   * @param f Function to apply.
+   * @param from Inclusive initial key.
+   * @param to Inclusive terminal key.
+   * @param by Chunk size.
+   * @return Asynchronous result.
    */
-  def network(): Try[View] = {
-    Try(BeakerGrpc.blockingStub(this.channel).network(Void()))
+  def scan[U](
+    f: Map[Key, Revision] => U,
+    from: Option[Key] = None,
+    to: Option[Key] = None,
+    by: Int = 10000
+  ): Future[Unit] = {
+    val promise = Promise[Unit]()
+    var range = Range(from, by)
+    val server = new AtomicReference[StreamObserver[Range]]
+
+    // Asynchronously scans the remote beaker and repairs the local beaker.
+    val observer = BeakerGrpc.stub(this.channel).scan(new StreamObserver[Revisions] {
+      override def onError(throwable: Throwable): Unit =
+        promise.failure(throwable)
+
+      override def onCompleted(): Unit =
+        promise.success(())
+
+      override def onNext(revisions: Revisions): Unit = {
+        val entries = revisions.entries.filterKeys(k => to.exists(_ > k))
+        f(entries)
+
+        if (entries.size < by) {
+          server.get().onCompleted()
+        } else {
+          range = range.withAfter(entries.keys.max)
+          server.get().onNext(range)
+        }
+      }
+    })
+
+    // Block until the local beaker is refreshed.
+    server.set(observer)
+    observer.onNext(range)
+    promise.future
   }
 
   /**
@@ -144,9 +151,8 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to prepare.
    * @return Promise.
    */
-  private[beaker] def prepare(proposal: Proposal): Try[Proposal] = {
+  private[beaker] def prepare(proposal: Proposal): Try[Proposal] =
     Try(BeakerGrpc.blockingStub(this.channel).prepare(proposal))
-  }
 
   /**
    * Requests a vote for a proposal.
@@ -185,6 +191,15 @@ class Client(channel: ManagedChannel) {
 }
 
 object Client {
+
+  /**
+   * Constructs a client connected to the specified url.
+   *
+   * @param url Connect string. ($host:$port)
+   * @return Connected client.
+   */
+  def apply(url: String): Client =
+    Client(url.split(":").head, url.split(":").last.toInt)
 
   /**
    * Constructs a client connected to the specified address.
