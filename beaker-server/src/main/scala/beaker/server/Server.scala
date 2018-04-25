@@ -1,6 +1,6 @@
 package beaker.server
 
-import beaker.client.{Client, Cluster}
+import beaker.client._
 import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage._
@@ -95,17 +95,6 @@ case class Server(
 object Server {
 
   /**
-   * Constructs an address from the specified url.
-   *
-   * @param url Connection url.
-   * @return Address.
-   */
-  private def parse(url: String): Address = {
-    val tokens = url.split(":")
-    Address(tokens(0), tokens(1).toInt)
-  }
-
-  /**
    * An instance configuration.
    *
    * @param address Server location.
@@ -151,9 +140,9 @@ object Server {
     }
 
     // Bootstrap an instance from the configuration.
-    val address = parse(config.address)
+    val address = config.address.toAddress
     val beaker = Beaker(Archive(storage), Proposer(address, config.backoff))
-    val seed = config.seed.map(parse)
+    val seed = config.seed.map(_.toAddress)
     Server(address, beaker, seed.map(Client(_)))
   }
 

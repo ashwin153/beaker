@@ -70,7 +70,7 @@ message Transaction {
  */
 message Ballot {
 
-  required int32 round = 1 [default = 0];
+  required int64 round = 1 [default = 0];
   required int64 id = 2 [default = 0];
 
 }

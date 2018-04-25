@@ -5,10 +5,9 @@ import beaker.common.concurrent.Locking
 import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage.Local
-
 import java.net.InetAddress
 import java.nio.ByteBuffer
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.math.Ordering.Implicits._
@@ -29,7 +28,7 @@ case class Proposer(
   backoff: Duration
 ) extends Locking {
 
-  private[this] val round   : AtomicInteger         = new AtomicInteger(1)
+  private[this] val round   : AtomicLong            = new AtomicLong(1)
   private[this] val current : AtomicReference[View] = new AtomicReference(View.defaultInstance)
 
   /**
