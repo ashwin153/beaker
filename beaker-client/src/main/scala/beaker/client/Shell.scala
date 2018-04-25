@@ -5,7 +5,7 @@ import scala.concurrent.duration.Duration
 import scala.Console._
 import scala.io.StdIn
 
-object Main extends App {
+object Shell extends App {
 
   //
   val usage: String =

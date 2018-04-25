@@ -17,8 +17,8 @@ scala_library(
 jvm_binary(
     name='bin',
     basename='beaker-client',
-    source='beaker/client/Main.scala',
-    main='beaker.client.Main',
+    source='beaker/client/Shell.scala',
+    main='beaker.client.Shell',
     dependencies=[
         'beaker-client/src/main/scala',
     ],
