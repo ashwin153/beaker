@@ -41,7 +41,7 @@ object Shell extends App {
       case "network" :: Nil =>
         dump(this.client.network())
       case "help" :: _ =>
-        print(this.usage)
+        println(this.usage)
       case "kill" :: host :: Nil if host.split(":").length == 2 =>
         val at = host.toAddress
         dump(this.client.network().map(_.configuration)
@@ -54,7 +54,7 @@ object Shell extends App {
       case "quit" :: _ =>
         this.continue = false
       case _ =>
-        print(this.usage)
+        println(this.usage)
     }
   }
 
