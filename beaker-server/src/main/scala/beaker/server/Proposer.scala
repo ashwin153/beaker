@@ -6,6 +6,8 @@ import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage.Local
 
+import com.typesafe.scalalogging.Logger
+
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
@@ -29,6 +31,7 @@ case class Proposer(
   backoff: Duration
 ) extends Locking {
 
+  private[this] val logger: Logger = Logger(classOf[Proposer])
   private[this] val round: AtomicLong = new AtomicLong(1)
   private[this] val current: AtomicReference[View] = new AtomicReference(View.defaultInstance)
 
@@ -75,6 +78,7 @@ case class Proposer(
    */
   def consensus(proposal: Proposal): Try[Unit] = {
     // Prepare the proposal on a quorum of beakers.
+    this.logger.debug("Preparing {}", proposal.commits.hashCode())
     this.acceptors.quorum(_.prepare(proposal)) flatMap { promises =>
       val promise = promises.reduce(_ merge _)
       if (proposal.ballot < promise.ballot || proposal.view < promise.view) {
@@ -87,6 +91,7 @@ case class Proposer(
         consensus(promise.copy(ballot = after(promise.ballot)))
       } else {
         // Otherwise, get all keys in the proposal from a quorum.
+        this.logger.debug("Reading {}", proposal.commits.hashCode())
         val depends = proposal.commits.flatMap(_.depends.keySet)
         this.acceptors.quorum(_.get(depends.toSet)) map { replicas =>
           // Determine the latest and the oldest version of each key.
@@ -105,6 +110,7 @@ case class Proposer(
           updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
+          this.logger.debug("Accepting {}", proposal.commits.hashCode())
           this.acceptors.broadcastAsync(_.accept(updated))
           Thread.sleep(backoff.toMillis)
           consensus(updated.copy(ballot = after(updated.ballot)))

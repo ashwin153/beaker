@@ -43,6 +43,12 @@ jar_library(name='rediscala', jars=[
     jar(org='com.github.etaty', name='rediscala_2.12', rev='1.8.0'),
 ])
 
+# Scala Logging
+jar_library(name='scala-logging', jars = [
+    jar(org='com.typesafe.scala-logging', name='scala-logging_2.12', rev='3.9.0')
+])
+
+
 # ScalaPB Runtime
 jar_library(name='scalapb-runtime', jars = [
     jar(org='com.trueaccord.scalapb', name='scalapb-runtime_2.12', rev='0.6.7')

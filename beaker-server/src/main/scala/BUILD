@@ -13,6 +13,7 @@ scala_library(
         scoped('3rdparty/jvm:mysql', scope='runtime'),
         scoped('3rdparty/jvm:postgresql', scope='runtime'),
         '3rdparty/jvm:pureconfig',
+        '3rdparty/jvm:scala-logging',
         '3rdparty/jvm:slf4j-simple',
     ],
     provides=artifact(
