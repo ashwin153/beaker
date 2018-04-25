@@ -44,7 +44,7 @@ object Shell extends App {
       case "put" :: entries =>
         dump(this.client.put(entries.grouped(2) map { case List(k, v) => k -> v } toMap))
       case "print" :: Nil =>
-        Await.result(this.client.foreach(dump), Duration.Inf)
+        Await.result(this.client.scan(dump), Duration.Inf)
       case "quit" :: _ =>
         this.continue = false
       case _ =>
@@ -61,18 +61,9 @@ object Shell extends App {
     case Success(x) => dump(x)
     case Failure(x) => println(s"${ RED }${ x.getMessage }${ RESET }")
     case x: Map[Key, Revision] => x foreach { case (k, r) => dump(k, r) }
-    case (key: Key, revision: Revision) => dump(key, revision)
+    case (k: Key, r: Revision) => println("%-25s %05d %s".format(k, r.version, r.value))
     case Unit => println()
     case x => println(x)
   }
-
-  /**
-   * Formats and prints the specified key-value pair.
-   *
-   * @param key Key.
-   * @param revision Revision.
-   */
-  def dump(key: Key, revision: Revision): Unit =
-    println("%-25s %05d %s".format(key, revision.version, revision.value))
 
 }
