@@ -42,7 +42,7 @@ object Shell extends App {
           .map(x => Configuration(x.acceptors.filter(_ != at), x.learners.filter(_ != at)))
           .flatMap(this.client.reconfigure))
       case "put" :: entries =>
-        dump(this.client.put(entries.grouped(2) map { case List(k, v) => k -> v } toMap))
+        this.client.put(entries.grouped(2) map { case List(k, v) => k -> v } toMap)
       case "print" :: Nil =>
         Await.result(this.client.scan(dump), Duration.Inf)
       case "quit" :: _ =>
