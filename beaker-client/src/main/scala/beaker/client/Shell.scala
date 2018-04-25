@@ -36,7 +36,7 @@ object Shell extends App {
         val depends = parse(args.slice(args.indexOf("if") + 1, args.size), _.toLong)
         val changes = parse(args.slice(0, args.indexOf("if")), identity)
         dump(this.client.cas(depends, changes))
-      case "get" :: keys =>
+      case "get" :: keys if keys.nonEmpty =>
         dump(this.client.get(keys.map(parse)))
       case "network" :: Nil =>
         dump(this.client.network())
