@@ -1,18 +1,16 @@
 # Getting Started
-An __instance__ may be started and run using [Docker][2]. Refer to the [reference][3] configuration
-for information about the various configuration parameters and their default values. This 
-configuration may be optionally override by providing a static configuration file, 
-```application.conf```, or by explicitly overriding parameters from the command line.
+Refer to the [reference][3] configuration for information about the various configuration 
+parameters and their default values. This configuration may be optionally override by 
+providing a static configuration file, ```application.conf```, or by explicitly overriding 
+parameters from the command line.
 
 ```bash
-curl https://raw.githubusercontent.com/ashwin153/beaker/master/run.sh -O
-chmod +x run.sh
+git clone https://github.com/ashwin153/beaker && cd beaker/
 
-sudo ./run.sh -d \                              # Daemonize server. (false)
+./run.sh
   -p 9091 \                                     # Port number. (9090)
-  -c /path/to/application.conf                  # Configuration file. (reference.conf)
+  -c /path/to/application.conf \                # Configuration file. (reference.conf)
   -o beaker.server.seed=localhost:9090          # Configuration overrides.
-  -o 'beaker.database.sql.password="asdf"'      # Configuration overrides.=
 ```
 
 # Background
