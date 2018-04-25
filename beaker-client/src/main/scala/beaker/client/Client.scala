@@ -26,7 +26,7 @@ class Client(channel: ManagedChannel) {
    * @return Whether or not the changes were applied.
    */
   def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Try[Map[Key, Version]] = {
-    val rset = depends ++ changes.keySet.map(k => k -> depends.getOrElse(k, 0L))
+    val rset = depends ++ (changes.keySet -- depends.keySet).map(k => k -> 0L)
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
     val result = Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
     result.filter(_.successful).map(_ => wset.mapValues(_.version))
