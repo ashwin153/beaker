@@ -127,7 +127,7 @@ class Client(channel: ManagedChannel) {
         promise.success(())
 
       override def onNext(revisions: Revisions): Unit = {
-        val entries = revisions.entries.filterKeys(k => to.exists(_ > k))
+        val entries = revisions.entries.filterKeys(k => !to.exists(_ <= k))
         f(entries)
 
         if (entries.size < by) {
