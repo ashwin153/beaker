@@ -153,7 +153,7 @@ object Proposer {
    * @param backoff Backoff interval.
    * @return Initialized proposer.
    */
-  def apply(address: Address, backoff: Duration = 1 second): Proposer = {
+  def apply(address: Address, backoff: Duration): Proposer = {
     val ip = ByteBuffer.wrap(InetAddress.getByName(address.name).getAddress).getInt
     val id = (ip.toLong << 32) | (address.port & 0xffffffffL)
     new Proposer(id, Cluster.empty, Cluster.empty, backoff)
