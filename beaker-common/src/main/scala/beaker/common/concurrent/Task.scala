@@ -28,25 +28,27 @@ class Task(body: => Try[Unit]) {
    *
    * @return Computation handle.
    */
-  def future: Future[Unit] = {
-    this.promise.future
-  }
+  def future: Future[Unit] = this.promise.future
 
   /**
    * Completes the task successfully.
    */
-  def finish(): Unit = {
-    this.thread.interrupt()
-    this.promise.success(())
+  def finish(): Unit = synchronized {
+    if (!this.promise.isCompleted) {
+      this.thread.interrupt()
+      this.promise.success(())
+    }
   }
 
 
   /**
    * Completes the task unsuccessfully.
    */
-  def cancel(): Unit = {
-    this.thread.interrupt()
-    this.promise.failure(Task.Cancelled)
+  def cancel(): Unit = synchronized {
+    if (!this.promise.isCompleted) {
+      this.thread.interrupt()
+      this.promise.failure(Task.Cancelled)
+    }
   }
 
 }
