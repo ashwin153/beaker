@@ -26,6 +26,7 @@ while getopts ":hc:dn:o:p:r:" opt; do
         exit 1
         ;;
     c ) eval cp ${OPTARG} /beaker-server/src/main/resources/application.conf
+        trap 'rm /beaker-server/src/main/resources/application.conf' EXIT
         ;;
     o ) opts+="--jvm-run-jvm-options="\""-D${OPTARG}"\"" "
         ;;
@@ -36,4 +37,3 @@ done
 
 opts+="--jvm-run-jvm-options="\""-Dbeaker.server.address=${host}:${port}"\"
 eval ./pants run beaker-server/src/main/scala:bin ${opts}
-rm /beaker-server/src/main/resources/application.conf
