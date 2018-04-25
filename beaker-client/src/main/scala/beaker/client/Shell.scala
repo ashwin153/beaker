@@ -1,6 +1,7 @@
 package beaker.client
 
-import beaker.server.protobuf.{Address, Configuration, Revision}
+import beaker.server.protobuf._
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.Console._
@@ -31,7 +32,7 @@ object Shell extends App {
   while (this.continue) {
     print(s"${ GREEN }${ this.address.name }:${ this.address.port }>${ RESET } ")
     StdIn.readLine.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)").toList match {
-      case "cas" :: args =>
+      case "cas" :: args if args.count(_ != "if") % 2 == 0 =>
         val depends = parse(args.slice(args.indexOf("if") + 1, args.size), _.toLong)
         val changes = parse(args.slice(0, args.indexOf("if")), identity)
         dump(this.client.cas(depends, changes))
@@ -40,20 +41,20 @@ object Shell extends App {
       case "network" :: Nil =>
         dump(this.client.network())
       case "help" :: _ =>
-        dump(this.usage)
-      case "kill" :: host :: Nil =>
+        print(this.usage)
+      case "kill" :: host :: Nil if host.split(":").length == 2 =>
         val at = host.toAddress
         dump(this.client.network().map(_.configuration)
           .map(x => Configuration(x.acceptors.filter(_ != at), x.learners.filter(_ != at)))
           .flatMap(this.client.reconfigure))
-      case "put" :: entries =>
+      case "put" :: entries if entries.size % 2 == 0 =>
         dump(this.client.put(parse(entries, identity)))
       case "print" :: Nil =>
         Await.result(this.client.scan(dump), Duration.Inf)
       case "quit" :: _ =>
         this.continue = false
       case _ =>
-        dump(this.usage)
+        print(this.usage)
     }
   }
 
