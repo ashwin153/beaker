@@ -22,8 +22,7 @@ object Shell extends App {
   var continue = true
 
   while (this.continue) {
-    print(s"${ GREEN }${ args(0) }>${ RESET } ")
-
+    print(s"${ GREEN }${ this.address.head }:${ this.address.last }>${ RESET } ")
     StdIn.readLine().split(" ").toList match {
       case "get" :: keys => this.client.get(keys.toSet).foreach(_.foreach(println))
       case "network" :: Nil => this.client.network().foreach(println)
