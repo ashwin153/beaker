@@ -3,8 +3,8 @@ scalapb_library(
     sources=rglobs('*.proto'),
     flat_package=True,
     dependencies=[
-      '3rdparty/jvm:scalapb-runtime',
-      '3rdparty/jvm:scalapb-runtime-grpc',
+        '3rdparty/jvm:scalapb-runtime',
+        '3rdparty/jvm:scalapb-runtime-grpc',
     ],
     provides=artifact(
         org='com.madavan',
