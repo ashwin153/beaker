@@ -82,13 +82,26 @@ object Shell extends App {
    * @param any Value.
    */
   def dump(any: Any): Unit = any match {
-    case (k: Key, r: Revision) => println(s"$CYAN%06d$RESET %-80s %s".format(r.version, k, r.value))
-    case (k: Key, v: Version) => dump(k, Revision(v, ""))
-    case Success(x) => dump(x)
-    case Failure(x) => println(s"${ RED }Failure. Please try again.${ RESET }")
-    case x: Map[_, _] => x foreach { case (k, r) => dump(k, r) }
-    case Unit => println()
-    case x => println(x)
+    case (k: Key, r: Revision) =>
+      println(s"$CYAN%06d$RESET %-80s %s".format(r.version, k, r.value))
+    case (k: Key, v: Version) =>
+      dump(k, Revision(v, ""))
+    case Success(x) =>
+      dump(x)
+    case Failure(x) =>
+      println(s"${ RED }Failure. Please try again.${ RESET }")
+    case x: Map[_, _] =>
+      x foreach { case (k, r) => dump(k, r) }
+    case View(b, Configuration(a, l)) =>
+      println
+        s"""${ YELLOW }ballot$RESET    ${ "%10d%10d".format(b.round, b.id)}
+           |${ YELLOW }acceptors$RESET ${ a.map(x => s"${ x.name }:${ x.port }").mkString(", ") }
+           |${ YELLOW }learners$RESET  ${ l.map(x => s"${ x.name }:${ x.port }").mkString(", ") }
+         """.stripMargin
+    case Unit =>
+      println
+    case x =>
+      println(x)
   }
 
 }
