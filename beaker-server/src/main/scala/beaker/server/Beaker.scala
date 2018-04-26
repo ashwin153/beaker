@@ -4,7 +4,7 @@ import beaker.common.util._
 import beaker.common.concurrent._
 import beaker.server.protobuf._
 
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
 import io.grpc.stub.StreamObserver
 
 import scala.collection.mutable
@@ -22,9 +22,8 @@ import scala.concurrent.Future
 case class Beaker(
   archive: Archive,
   proposer: Proposer
-) extends BeakerGrpc.Beaker {
+) extends BeakerGrpc.Beaker with LazyLogging {
 
-  private[this] val logger: Logger = Logger(classOf[Proposer])
   private[this] val configuring: mutable.Map[View, Task] = mutable.Map.empty
   private[this] val proposing: mutable.Map[Transaction, Task] = mutable.Map.empty
   private[this] val promised: mutable.Set[Proposal] = mutable.Set.empty

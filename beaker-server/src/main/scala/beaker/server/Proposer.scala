@@ -6,7 +6,7 @@ import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage.Local
 
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
 
 import java.net.InetAddress
 import java.nio.ByteBuffer
@@ -29,9 +29,8 @@ case class Proposer(
   acceptors: Cluster,
   learners: Cluster,
   backoff: Duration
-) extends Locking {
+) extends Locking with LazyLogging {
 
-  private[this] val logger: Logger = Logger(classOf[Proposer])
   private[this] val round: AtomicLong = new AtomicLong(1)
   private[this] val current: AtomicReference[View] = new AtomicReference(View.defaultInstance)
 
