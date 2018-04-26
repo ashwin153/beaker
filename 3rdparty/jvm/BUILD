@@ -57,7 +57,6 @@ jar_library(name='scalapb-runtime', jars = [
 # SLF4J
 jar_library(name='slf4j', jars=[
     jar(org='org.slf4j', name='slf4j-log4j12', rev='1.7.25'),
-    jar(org='log4j', name='log4j12', rev='1.7.25'),
 ])
 
 ####################################################################################################
