@@ -113,20 +113,30 @@ case class Beaker(
   }
 
   override def propose(transaction: Transaction): Future[Result] = synchronized {
-    // Asynchronously propose the transaction with the current view.
-    val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
-    val task = Task(this.proposer.consensus(proposal))
-    this.proposing += transaction -> task
-    task.future map { _ => Result(true) } recover { case _ => Result(false) }
+    if (this.proposing.keys.exists(_ ~ transaction)) {
+      // If the transaction conflicts with a proposed transaction, then return failure.
+      Future(Result(false))
+    } else {
+      // Otherwise, asynchronously propose the transaction.
+      val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
+      val task = Task(this.proposer.consensus(proposal))
+      this.proposing += transaction -> task
+      task.future map { _ => Result(true) } recover { case _ => Result(false) }
+    }
   }
 
   override def reconfigure(configuration: Configuration): Future[Result] = synchronized {
-    // Asynchronously propose the new view.
-    val view = View(this.proposer.next(), configuration)
-    val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
-    val task = Task(this.proposer.consensus(proposal))
-    this.configuring += view -> task
-    task.future map { _ => Result(true) } recover { case _ => Result(false) }
+    if (this.configuring.nonEmpty) {
+      // If a view is already being configured, then return failure.
+      Future(Result(false))
+    } else {
+      // Otherwise, asynchronously propose the new configuration.
+      val view = View(this.proposer.next(), configuration)
+      val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
+      val task = Task(this.proposer.consensus(proposal))
+      this.configuring += view -> task
+      task.future map { _ => Result(true) } recover { case _ => Result(false) }
+    }
   }
 
   override def scan(revisions: StreamObserver[Revisions]): StreamObserver[Range] = {
