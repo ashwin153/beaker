@@ -12,6 +12,7 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 import scala.concurrent.duration._
+import scala.Console._
 import scala.language.postfixOps
 import scala.math.Ordering.Implicits._
 import scala.util.Try
@@ -77,7 +78,7 @@ case class Proposer(
    */
   def consensus(proposal: Proposal): Try[Unit] = {
     // Prepare the proposal on a quorum of beakers.
-    this.logger.debug("Preparing {}", proposal.commits.hashCode())
+    this.logger.debug(s"${ YELLOW }Preparing${ RESET } ${ proposal.commits.hashCode() }")
     this.acceptors.quorum(_.prepare(proposal)) flatMap { promises =>
       val promise = promises.reduce(_ merge _)
       if (proposal.ballot < promise.ballot || proposal.view < promise.view) {
@@ -90,7 +91,7 @@ case class Proposer(
         consensus(promise.copy(ballot = after(promise.ballot)))
       } else {
         // Otherwise, get all keys in the proposal from a quorum.
-        this.logger.debug("Reading {}", proposal.commits.hashCode())
+        this.logger.debug(s"${ WHITE }Reading${ RESET } ${ proposal.commits.hashCode() }")
         val depends = proposal.commits.flatMap(_.depends.keySet)
         this.acceptors.quorum(_.get(depends.toSet)) map { replicas =>
           // Determine the latest and the oldest version of each key.
@@ -109,7 +110,7 @@ case class Proposer(
           updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
-          this.logger.debug("Accepting {}", proposal.commits.hashCode())
+          this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ proposal.commits.hashCode() }")
           this.acceptors.broadcastAsync(_.accept(updated))
           Thread.sleep(backoff.toMillis)
           consensus(updated.copy(ballot = after(updated.ballot)))
