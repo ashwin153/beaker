@@ -45,11 +45,11 @@ case class Beaker(
       this.accepted --= this.accepted.filter(_ <| proposal)
       this.accepted += proposal
       this.proposer.learners.broadcastAsync(_.learn(proposal))
-      this.logger.debug(s"${ BLUE }Accepted${ RESET } ${ proposal.commits.hashCode() }")
+      this.logger.debug(s"${ CYAN }Accepted${ RESET }\t${ proposal.commits.hashCode() }")
       Future(Result(true))
     } else {
       // Otherwise, it rejects the proposal.
-      this.logger.debug(s"${ RED }Rejected${ RESET } ${ proposal.commits.hashCode()}")
+      this.logger.debug(s"${ RED }Rejected${ RESET }\t${ proposal.commits.hashCode()}")
       Future(Result(false))
     }
   }
@@ -60,7 +60,7 @@ case class Beaker(
 
   override def learn(proposal: Proposal): Future[Void] = synchronized {
     // Vote for the proposal and discard older learned proposals.
-    this.logger.debug(s"${ CYAN }Learning${ RESET } ${ proposal.commits.hashCode() }")
+    this.logger.debug(s"${ CYAN }Learning${ RESET }\t${ proposal.commits.hashCode() }")
     this.learned.removeKeys(_ <| proposal)
     this.learned(proposal) = this.learned.getOrElse(proposal, 0) + 1
 
@@ -80,7 +80,7 @@ case class Beaker(
       this.proposing.removeKeys(t => transactions.exists(_ ~ t)).values.foreach(_.cancel())
       this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
       this.configuring.removeKeys(_ < proposal.view).values.foreach(_.cancel())
-      this.logger.debug(s"${ GREEN }Learned${ RESET } ${ proposal.commits.hashCode() }")
+      this.logger.debug(s"${ GREEN }Learned${ RESET }\t${ proposal.commits.hashCode() }")
     }
 
     Future(Void())
@@ -94,7 +94,7 @@ case class Beaker(
     this.promised.find(_ |> proposal) match {
       case Some(r) =>
         // If a promise has been made to a newer proposal, its ballot is returned.
-        this.logger.debug(s"${ RED }Rejected${ RESET } ${ proposal.commits.hashCode() }")
+        this.logger.debug(s"${ RED }Rejected${ RESET }\t${ proposal.commits.hashCode() }")
         Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
       case None =>
         // Otherwise, any older accepted proposals are merged together into a promise or the
@@ -107,7 +107,7 @@ case class Beaker(
         // Promises not to accept any proposal that is older than the promised proposal.
         this.promised --= this.promised.filter(_ <| proposal)
         this.promised += promise.withBallot(proposal.ballot)
-        this.logger.debug(s"${ YELLOW }Prepared${ RESET }", promise.commits.hashCode())
+        this.logger.debug(s"${ MAGENTA }Prepared${ RESET }\t${ promise.commits.hashCode() }")
         Future(promise)
     }
   }
