@@ -6,7 +6,9 @@ import beaker.server.protobuf._
 import io.grpc.stub.StreamObserver
 import io.grpc.{Context, ManagedChannel, ManagedChannelBuilder}
 
+import java.util
 import java.util.concurrent.atomic.AtomicReference
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
@@ -23,7 +25,7 @@ class Client(channel: ManagedChannel) {
    *
    * @param depends Dependencies.
    * @param changes Changes to apply.
-   * @return Whether or not the changes were applied.
+   * @return Updated versions.
    */
   def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Try[Map[Key, Version]] = {
     val rset = depends ++ (changes.keySet -- depends.keySet).map(k => k -> 0L)
@@ -31,6 +33,17 @@ class Client(channel: ManagedChannel) {
     val result = Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
     result.filter(_.successful).map(_ => wset.mapValues(_.version))
   }
+
+  /**
+   * Conditionally applies the changes if the dependencies remain unchanged.
+   *
+   * @param depends Dependencies.
+   * @param changes Changes to apply.
+   * @throws Exception If changes could not be applied.
+   * @return Updated versions.
+   */
+  def cas(depends: util.Map[Key, Version], changes: util.Map[Key, Value]): Try[util.Map[Key, Version]] =
+    cas(depends.asScala, changes.asScala).map(_.asJava)
 
   /**
    * Closes the underlying channel.
@@ -53,6 +66,15 @@ class Client(channel: ManagedChannel) {
    */
   def get(keys: Iterable[Key]): Try[Map[Key, Revision]] =
     Try(BeakerGrpc.blockingStub(this.channel).get(Keys(keys.toSeq)).entries)
+
+  /**
+   * Returns the revisions of the keys.
+   *
+   * @param keys Keys to retrieve.
+   * @return Revisions of keys.
+   */
+  def get(keys: util.Collection[Key]): Try[util.Map[Key, Revision]] =
+    get(keys.asScala).map(_.asJava)
 
   /**
    * Asynchronously applies the function to every key.
@@ -90,6 +112,15 @@ class Client(channel: ManagedChannel) {
    */
   def put(changes: Map[Key, Value]): Try[Map[Key, Version]] =
     get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes))
+
+  /**
+   * Conditionally applies the changes and returns their updated versions.
+   *
+   * @param changes Changes to apply.
+   * @return Updated versions.
+   */
+  def put(changes: util.Map[Key, Value]): Try[util.Map[Key, Version]] =
+    put(changes.asScala).map(_.asJava)
 
   /**
    * Attempts to consistently update the network configuration.

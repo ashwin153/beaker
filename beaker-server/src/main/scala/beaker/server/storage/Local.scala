@@ -28,7 +28,7 @@ object Local {
     }
 
     override def read(keys: Set[Key]): Try[Map[Key, Revision]] = {
-      Try(keys.map(k => k -> this.underlying.get(k)).filter(_._2 != null).toMap)
+      Try(keys.map(k => k -> this.underlying.getOrDefault(k, Revision.defaultInstance)).toMap)
     }
 
     override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = {
