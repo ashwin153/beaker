@@ -28,6 +28,7 @@ object Shell extends App {
   val client = Client(this.address)
 
   // REPL.
+  println
   var continue = true
   while (this.continue) {
     print(s"${ GREEN }${ this.address.name }:${ this.address.port }>${ RESET } ")
