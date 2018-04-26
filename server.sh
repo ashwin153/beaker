@@ -7,7 +7,7 @@ host=$(hostname -I | cut -d' ' -f1)
 port=9090
 opts=""
 
-while getopts ":hc:dn:o:p:r:" opt; do
+while getopts ":hc:l:o:p:" opt; do
   case $opt in
     h ) echo "Usage: $0 [option...]                                         " >&2
         echo
