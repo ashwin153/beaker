@@ -23,13 +23,13 @@ object Local {
     underlying: ConcurrentSkipListMap[Key, Revision]
   ) extends server.Database {
 
-    override def close(): Unit = {
-      this.underlying.clear()
-    }
+    override def close(): Unit = this.underlying.clear()
 
-    override def read(keys: Set[Key]): Try[Map[Key, Revision]] = {
+    override def read(keys: Set[Key]): Try[Map[Key, Revision]] =
       Try(keys.map(k => k -> this.underlying.getOrDefault(k, Revision.defaultInstance)).toMap)
-    }
+
+    override def write(changes: Map[Key, Revision]): Try[Unit] =
+      Try(changes foreach { case (k, r) => this.underlying.put(k, r) })
 
     override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = {
       val range = after match {
@@ -38,10 +38,6 @@ object Local {
       }
 
       Try(range.iterator().asScala.take(limit).map(x => x.getKey -> x.getValue).toMap)
-    }
-
-    override def write(changes: Map[Key, Revision]): Try[Unit] = {
-      Try(changes foreach { case (k, r) => this.underlying.put(k, r) })
     }
 
   }
@@ -97,8 +93,7 @@ object Local {
     underlying: caffeine.Cache[Key, Revision]
   ) extends server.Cache {
 
-    override def close(): Unit =
-      this.underlying.invalidateAll()
+    override def close(): Unit = this.underlying.invalidateAll()
 
     override def fetch(keys: Set[Key]): Try[Map[Key, Revision]] =
       Try(this.underlying.getAllPresent(keys.asJava).asScala.toMap)

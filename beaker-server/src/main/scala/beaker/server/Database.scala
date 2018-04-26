@@ -17,6 +17,31 @@ trait Database {
   def close(): Unit
 
   /**
+   * Returns the revision of the specified keys.
+   *
+   * @param keys Keys to read.
+   * @return Revision of each key.
+   */
+  def read(keys: Set[Key]): Try[Map[Key, Revision]]
+
+  /**
+   * Applies the changes to the database.
+   *
+   * @param changes Changes to apply.
+   * @return Whether or not changes were applied.
+   */
+  def write(changes: Map[Key, Revision]): Try[Unit]
+
+  /**
+   * Returns the revisions of the first limit keys after, but not including, the specified key.
+   *
+   * @param after Exclusive initial key.
+   * @param limit Maximum number to return.
+   * @return Revisions of keys in range.
+   */
+  def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]]
+
+  /**
    * Attempts to commit the transaction on the database. Transactions may be committed if and only
    * if the versions they depend on are greater than or equal to their versions in the database.
    * Revisions are monotonic; if a transaction changes a key for which there exists a newer
@@ -36,31 +61,6 @@ trait Database {
       if (invalid.isEmpty) write(updates) else Failure(Database.Conflicts(invalid))
     }
   }
-
-  /**
-   * Returns the revision of the specified keys.
-   *
-   * @param keys Keys to read.
-   * @return Revision of each key.
-   */
-  def read(keys: Set[Key]): Try[Map[Key, Revision]]
-
-  /**
-   * Returns the revisions of the first limit keys after, but not including, the specified key.
-   *
-   * @param after Exclusive initial key.
-   * @param limit Maximum number to return.
-   * @return Revisions of keys in range.
-   */
-  def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]]
-
-  /**
-   * Applies the changes to the database.
-   *
-   * @param changes Changes to apply.
-   * @return Whether or not changes were applied.
-   */
-  def write(changes: Map[Key, Revision]): Try[Unit]
 
 }
 

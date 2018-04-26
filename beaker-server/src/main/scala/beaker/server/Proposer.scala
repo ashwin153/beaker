@@ -36,6 +36,14 @@ case class Proposer(
   private[this] val current: AtomicReference[View] = new AtomicReference(View.defaultInstance)
 
   /**
+   * Closes all acceptors and learners.
+   */
+  def close(): Unit = {
+    this.acceptors.close()
+    this.learners.close()
+  }
+
+  /**
    * Returns the next ballot after the specified ballot.
    *
    * @param ballot Initial ballot.
@@ -47,11 +55,19 @@ case class Proposer(
   }
 
   /**
-   * Closes all acceptors and learners.
+   * Returns the next ballot.
+   *
+   * @return Next ballot.
    */
-  def close(): Unit = {
-    this.acceptors.close()
-    this.learners.close()
+  def next(): Ballot = after(Ballot.defaultInstance)
+
+  /**
+   * Atomically returns the current view of the configuration.
+   *
+   * @return Current view.
+   */
+  def view: View = shared {
+    this.current.get
   }
 
   /**
@@ -61,6 +77,19 @@ case class Proposer(
    */
   def configuration: Configuration = shared {
     this.current.get.configuration
+  }
+
+  /**
+   * Atomically reconfigures the acceptors and learners.
+   *
+   * @param view Updated view.
+   */
+  def reconfigure(view: View): Unit = exclusive {
+    if (this.current.get < view) {
+      this.acceptors.update(view.configuration.acceptors)
+      this.learners.update(view.configuration.learners)
+      this.current.set(view)
+    }
   }
 
   /**
@@ -119,35 +148,6 @@ case class Proposer(
         }
       }
     }
-  }
-
-  /**
-   * Returns the next ballot.
-   *
-   * @return Next ballot.
-   */
-  def next(): Ballot = after(Ballot.defaultInstance)
-
-  /**
-   * Atomically reconfigures the acceptors and learners.
-   *
-   * @param view Updated view.
-   */
-  def reconfigure(view: View): Unit = exclusive {
-    if (this.current.get < view) {
-      this.acceptors.update(view.configuration.acceptors)
-      this.learners.update(view.configuration.learners)
-      this.current.set(view)
-    }
-  }
-
-  /**
-   * Atomically returns the current view of the configuration.
-   *
-   * @return Current view.
-   */
-  def view: View = shared {
-    this.current.get
   }
 
 }

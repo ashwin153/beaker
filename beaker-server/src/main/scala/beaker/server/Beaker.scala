@@ -39,6 +39,67 @@ case class Beaker(
     this.proposer.close()
   }
 
+  override def get(keys: Keys): Future[Revisions] = {
+    this.archive.read(keys.names.toSet) map Revisions.apply
+  }
+
+  override def scan(revisions: StreamObserver[Revisions]): StreamObserver[Range] = {
+    this.archive.scan(revisions)
+  }
+
+  override def network(void: Void): Future[View] = {
+    Future(this.proposer.view)
+  }
+
+  override def reconfigure(configuration: Configuration): Future[Result] = synchronized {
+    if (this.configuring.nonEmpty) {
+      // If a view is already being configured, then return failure.
+      Future(Result(false))
+    } else {
+      // Otherwise, asynchronously propose the new configuration.
+      val view = View(this.proposer.next(), configuration)
+      val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
+      val task = Task(this.proposer.consensus(proposal))
+      this.configuring += view -> task
+      task.future map { _ => Result(true) } recover { case _ => Result(false) }
+    }
+  }
+
+  override def propose(transaction: Transaction): Future[Result] = synchronized {
+    if (this.proposing.keys.exists(_ ~ transaction)) {
+      // If the transaction conflicts with a proposed transaction, then return failure.
+      Future(Result(false))
+    } else {
+      // Otherwise, asynchronously propose the transaction.
+      val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
+      val task = Task(this.proposer.consensus(proposal))
+      this.proposing += transaction -> task
+      task.future map { _ => Result(true) } recover { case _ => Result(false) }
+    }
+  }
+
+  override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
+    this.promised.find(_ |> proposal) match {
+      case Some(r) =>
+        // If a promise has been made to a newer proposal, its ballot is returned.
+        this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode() }")
+        Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
+      case None =>
+        // Otherwise, any older accepted proposals are merged together into a promise or the
+        // proposal is promised with the zero ballot if no older proposals have been accepted.
+        val promise = this.accepted.filter(_ <| proposal)
+          .reduceOption(_ merge _)
+          .getOrElse(proposal.withBallot(Ballot.defaultInstance))
+          .withView(this.proposer.view max proposal.view)
+
+        // Promises not to accept any proposal that is older than the promised proposal.
+        this.promised --= this.promised.filter(_ <| proposal)
+        this.promised += promise.withBallot(proposal.ballot)
+        this.logger.debug(s"${ YELLOW }Prepared${ RESET }  ${ promise.commits.hashCode() }")
+        Future(promise)
+    }
+  }
+
   override def accept(proposal: Proposal): Future[Result] = synchronized {
     if (!this.promised.exists(_ |> proposal)) {
       // If the beaker has not promised not to accept the proposal, then it votes for it.
@@ -52,10 +113,6 @@ case class Beaker(
       this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode()}")
       Future(Result(false))
     }
-  }
-
-  override def get(keys: Keys): Future[Revisions] = {
-    this.archive.read(keys.names.toSet) map Revisions.apply
   }
 
   override def learn(proposal: Proposal): Future[Void] = synchronized {
@@ -84,63 +141,6 @@ case class Beaker(
     }
 
     Future(Void())
-  }
-
-  override def network(void: Void): Future[View] = {
-    Future(this.proposer.view)
-  }
-
-  override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
-    this.promised.find(_ |> proposal) match {
-      case Some(r) =>
-        // If a promise has been made to a newer proposal, its ballot is returned.
-        this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode() }")
-        Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
-      case None =>
-        // Otherwise, any older accepted proposals are merged together into a promise or the
-        // proposal is promised with the zero ballot if no older proposals have been accepted.
-        val promise = this.accepted.filter(_ <| proposal)
-          .reduceOption(_ merge _)
-          .getOrElse(proposal.withBallot(Ballot.defaultInstance))
-          .withView(this.proposer.view max proposal.view)
-
-        // Promises not to accept any proposal that is older than the promised proposal.
-        this.promised --= this.promised.filter(_ <| proposal)
-        this.promised += promise.withBallot(proposal.ballot)
-        this.logger.debug(s"${ YELLOW }Prepared${ RESET }  ${ promise.commits.hashCode() }")
-        Future(promise)
-    }
-  }
-
-  override def propose(transaction: Transaction): Future[Result] = synchronized {
-    if (this.proposing.keys.exists(_ ~ transaction)) {
-      // If the transaction conflicts with a proposed transaction, then return failure.
-      Future(Result(false))
-    } else {
-      // Otherwise, asynchronously propose the transaction.
-      val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
-      val task = Task(this.proposer.consensus(proposal))
-      this.proposing += transaction -> task
-      task.future map { _ => Result(true) } recover { case _ => Result(false) }
-    }
-  }
-
-  override def reconfigure(configuration: Configuration): Future[Result] = synchronized {
-    if (this.configuring.nonEmpty) {
-      // If a view is already being configured, then return failure.
-      Future(Result(false))
-    } else {
-      // Otherwise, asynchronously propose the new configuration.
-      val view = View(this.proposer.next(), configuration)
-      val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
-      val task = Task(this.proposer.consensus(proposal))
-      this.configuring += view -> task
-      task.future map { _ => Result(true) } recover { case _ => Result(false) }
-    }
-  }
-
-  override def scan(revisions: StreamObserver[Revisions]): StreamObserver[Range] = {
-    this.archive.scan(revisions)
   }
 
 }

@@ -62,11 +62,11 @@ object SQL {
     override def read(keys: Set[Key]): Try[Map[Key, Revision]] =
       if (keys.isEmpty) Success(Map.empty) else perform(this.dialect.select(_, keys))
 
-    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] =
-      perform(this.dialect.range(_, after, limit))
-
     override def write(changes: Map[Key, Revision]): Try[Unit] =
       if (changes.isEmpty) Success(Map.empty) else perform(this.dialect.upsert(_, changes))
+
+    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] =
+      perform(this.dialect.range(_, after, limit))
 
   }
 
