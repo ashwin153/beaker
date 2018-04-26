@@ -1,1 +1,1 @@
-resources(name='resources', sources=globs('*.conf'))
+resources(name='resources', sources=globs('*.*'))
