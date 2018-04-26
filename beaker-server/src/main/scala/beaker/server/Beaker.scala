@@ -49,7 +49,7 @@ case class Beaker(
       Future(Result(true))
     } else {
       // Otherwise, it rejects the proposal.
-      this.logger.debug(s"${ RED }Rejected${ RESET } ${ proposal.commits.hashCode()}")
+      this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode()}")
       Future(Result(false))
     }
   }
@@ -94,7 +94,7 @@ case class Beaker(
     this.promised.find(_ |> proposal) match {
       case Some(r) =>
         // If a promise has been made to a newer proposal, its ballot is returned.
-        this.logger.debug(s"${ RED }Rejected${ RESET } ${ proposal.commits.hashCode() }")
+        this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode() }")
         Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
       case None =>
         // Otherwise, any older accepted proposals are merged together into a promise or the

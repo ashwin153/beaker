@@ -83,10 +83,12 @@ case class Proposer(
       val promise = promises.reduce(_ merge _)
       if (proposal.ballot < promise.ballot || proposal.view < promise.view) {
         // If there exists a newer promise, then reconfigure and retry.
+        Thread.sleep(backoff.toMillis)
         reconfigure(promise.view)
         consensus(proposal.copy(ballot = after(promise.ballot)))
       } else if (!promise.equivalent(proposal)) {
         // If the promise does not match the proposal, then retry with the promise.
+        Thread.sleep(backoff.toMillis)
         reconfigure(promise.view)
         consensus(promise.copy(ballot = after(promise.ballot)))
       } else {
