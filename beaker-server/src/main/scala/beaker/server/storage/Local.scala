@@ -1,16 +1,14 @@
 package beaker.server
 package storage
 
-import beaker.common.concurrent.Locking
 import beaker.server
 import beaker.server.protobuf._
-
 import com.github.benmanes.caffeine.{cache => caffeine}
+
 import pureconfig._
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{ConcurrentSkipListMap, TimeUnit}
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
@@ -22,28 +20,28 @@ object Local {
    * @param underlying Underlying map.
    */
   case class Database(
-    underlying: mutable.SortedMap[Key, Revision]
-  ) extends server.Database with Locking {
+    underlying: ConcurrentSkipListMap[Key, Revision]
+  ) extends server.Database {
 
     override def close(): Unit = {
       this.underlying.clear()
     }
 
-    override def read(keys: Set[Key]): Try[Map[Key, Revision]] = shared {
-      Try(this.underlying.filterKeys(keys.contains).toMap)
+    override def read(keys: Set[Key]): Try[Map[Key, Revision]] = {
+      Try(keys.map(k => k -> this.underlying.get(k)).filter(_._2 != null).toMap)
     }
 
-    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = shared {
+    override def scan(after: Option[Key], limit: Int): Try[Map[Key, Revision]] = {
       val range = after match {
-        case Some(k) => this.underlying.iteratorFrom(k).drop(1)
-        case None => this.underlying.iterator
+        case Some(k) => this.underlying.tailMap(k, false).entrySet()
+        case None => this.underlying.entrySet()
       }
 
-      Try(range.take(limit).toMap)
+      Try(range.iterator().asScala.take(limit).map(x => x.getKey -> x.getValue).toMap)
     }
 
-    override def write(changes: Map[Key, Revision]): Try[Unit] = exclusive {
-      Try(this.underlying ++= changes)
+    override def write(changes: Map[Key, Revision]): Try[Unit] = {
+      Try(changes foreach { case (k, r) => this.underlying.put(k, r) })
     }
 
   }
@@ -72,7 +70,7 @@ object Local {
      * @return Dynamically-configured database.
      */
     def apply(config: Database.Config): Local.Database =
-      Local.Database(mutable.SortedMap.empty[Key, Revision])
+      Local.Database(Map.empty[Key, Revision])
 
     /**
      * Constructs an in-memory database initialized with the specified key-value pairs.
@@ -80,8 +78,11 @@ object Local {
      * @param initial Initial contents.
      * @return Initialized database.
      */
-    def apply(initial: Map[Key, Revision]): Local.Database =
-      Local.Database(mutable.SortedMap(initial.toSeq: _*))
+    def apply(initial: Map[Key, Revision]): Local.Database = {
+      val underlying = new ConcurrentSkipListMap[Key, Revision]()
+      underlying.putAll(initial.asJava)
+      Local.Database(underlying)
+    }
 
   }
 
