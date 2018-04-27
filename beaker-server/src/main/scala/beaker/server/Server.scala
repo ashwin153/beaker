@@ -4,9 +4,11 @@ import beaker.client._
 import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage._
+
 import io.grpc.ServerBuilder
-import java.util.concurrent.Executors
 import pureconfig._
+
+import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
 
@@ -25,7 +27,7 @@ case class Server(
 
   private[this] val underlying = ServerBuilder
     .forPort(this.address.port)
-//    .executor(Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors()))
+    .executor(Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors()))
     .addService(BeakerGrpc.bindService(this.beaker, global))
     .build()
 

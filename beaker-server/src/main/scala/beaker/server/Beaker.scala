@@ -126,8 +126,8 @@ case class Beaker(
       val transactions = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
       transactions.foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
+      this.accepted -= proposal
 
-      this.accepted.filter(p => p == proposal || p <| proposal).foreach(this.accepted -= _)
       this.proposing.removeKeys(transactions.contains).values.foreach(_.finish())
       this.proposing.removeKeys(t => transactions.exists(_ ~ t)).values.foreach(_.cancel())
       this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
