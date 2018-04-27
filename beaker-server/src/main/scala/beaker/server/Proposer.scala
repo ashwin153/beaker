@@ -126,6 +126,7 @@ case class Proposer(
         val depends = proposal.commits.flatMap(_.depends.keySet)
         this.acceptors.quorum(_.get(depends.toSet)) map { replicas =>
           // Determine the latest and the oldest version of each key.
+          this.logger.debug(s"${ CYAN }Read${ RESET }      ${ proposal.commits.hashCode() }")
           val latest = replicas.reduce(_ maximum _)
           val oldest = replicas.reduce(_ minimum _).withDefaultValue(Revision.defaultInstance)
           val snapshot = Local.Database(latest)
@@ -136,10 +137,6 @@ case class Proposer(
           val changes = commits.flatMap(_.changes.keySet)
           val repairs = (latest -- changes) filter { case (k, r) => oldest(k) < r }
           proposal.copy(commits = commits, repairs = proposal.repairs maximum repairs)
-        } filter { updated =>
-          // Filter proposal that contain transactions or repairs or a new view.
-          this.logger.debug(s"${ CYAN }Read${ RESET }      ${ proposal.commits.hashCode() }")
-          updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
           this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ proposal.commits.hashCode() }")
