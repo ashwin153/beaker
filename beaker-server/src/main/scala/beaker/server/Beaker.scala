@@ -121,7 +121,7 @@ case class Beaker(
     this.learned.removeKeys(_ <| proposal)
     this.learned(proposal) = this.learned.getOrElse(proposal, 0) + 1
 
-    if (this.learned(proposal) == this.proposer.acceptors.size / 2 + 1) {
+    if (this.learned(proposal) == proposal.view.configuration.acceptors.size + 1) {
       // If the proposal receives a majority of votes, then commit it.
       val transactions = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
       transactions.foreach(this.archive.commit)
