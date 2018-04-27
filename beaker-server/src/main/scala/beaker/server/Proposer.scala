@@ -139,10 +139,10 @@ case class Proposer(
           proposal.copy(commits = commits, repairs = proposal.repairs maximum repairs)
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
-          this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ proposal.commits.hashCode() }")
+          this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ updated.commits.hashCode() }")
           this.acceptors.broadcastAsync(_.accept(updated))
           Thread.sleep(this.backoff.toMillis)
-          consensus(updated.copy(ballot = after(updated.ballot)))
+          consensus(proposal.copy(ballot = after(updated.ballot)))
         }
       }
     } recoverWith { case _ =>

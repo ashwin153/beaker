@@ -61,7 +61,7 @@ package object server {
      * @return Whether or not they conflict.
      */
     def conflicts(y: Seq[Transaction]): Boolean =
-      (x.commits.isEmpty && x.repairs.isEmpty) || x.commits.exists(t => y.contains(t) || y.exists(_ ~ t))
+      x.commits.exists(t => y.contains(t) || y.exists(_ ~ t))
 
     /**
      * Returns whether or not the proposal commit the same transactions in the same configuration.
