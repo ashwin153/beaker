@@ -79,18 +79,18 @@ case class Beaker(
   }
 
   override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
-    this.prepared.find(proposal <| _) match {
+    this.prepared.find(_ |> proposal) match {
       case Some(r) =>
         // If a promise has been made to a newer proposal, its ballot is returned.
         this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode() }")
-        Future(Proposal(ballot = r.ballot, view = this.proposer.view max proposal.view))
+        Future(Proposal(ballot = r.ballot max proposal.ballot, view = r.view))
       case None =>
         // Otherwise, any older accepted proposals are merged together into a promise or the
         // proposal is promised with the zero ballot if no older proposals have been accepted.
         val promise = this.accepted.filter(_ <| proposal)
           .reduceOption(_ merge _)
           .getOrElse(proposal.withBallot(Ballot.defaultInstance))
-          .withView(this.proposer.view min proposal.view)
+          .withView(this.proposer.view max proposal.view)
 
         // Promises not to accept any proposal that is older than the promised proposal.
         this.prepared --= this.prepared.filter(_ <| proposal)
