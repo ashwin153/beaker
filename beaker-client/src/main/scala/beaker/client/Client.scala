@@ -3,7 +3,7 @@ package beaker.client
 import beaker.common.util._
 import beaker.server.protobuf._
 import io.grpc.stub.StreamObserver
-import io.grpc.{Context, ManagedChannel, ManagedChannelBuilder}
+import io.grpc.{Context, Deadline, ManagedChannel, ManagedChannelBuilder}
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -16,8 +16,9 @@ import scala.util.Try
  * A Beaker client.
  *
  * @param channel Underlying channel.
+ * @param timeout Request timeout.
  */
-class Client(channel: ManagedChannel) {
+class Client(channel: ManagedChannel, timeout: Deadline) {
 
   /**
    * Conditionally applies the changes if the dependencies remain unchanged.
@@ -29,12 +30,8 @@ class Client(channel: ManagedChannel) {
   def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Try[Map[Key, Version]] = {
     val rset = depends ++ (changes.keySet -- depends.keySet).map(k => k -> 0L)
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
-
-    Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(1, TimeUnit.SECONDS)
-      .propose(Transaction(rset, wset)))
-      .filter(_.successful)
-      .map(_ => wset.mapValues(_.version))
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadline(this.timeout)
+    Try(stub.propose(Transaction(rset, wset))).filter(_.successful).map(_ => wset.mapValues(_.version))
   }
 
   /**
@@ -67,10 +64,10 @@ class Client(channel: ManagedChannel) {
    * @param keys Keys to retrieve.
    * @return Revisions of keys.
    */
-  def get(keys: Iterable[Key]): Try[Map[Key, Revision]] =
-    Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(1, TimeUnit.SECONDS)
-      .get(Keys(keys.toSeq)).entries)
+  def get(keys: Iterable[Key]): Try[Map[Key, Revision]] = {
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadline(this.timeout)
+    Try(stub.get(Keys(keys.toSeq)).entries)
+  }
 
   /**
    * Returns the revisions of the keys.
@@ -96,10 +93,10 @@ class Client(channel: ManagedChannel) {
    *
    * @return Network configuration.
    */
-  def network(): Try[View] =
-    Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(1, TimeUnit.SECONDS)
-      .network(Void()))
+  def network(): Try[View] = {
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadline(this.timeout)
+    Try(stub.network(Void()))
+  }
 
   /**
    * Conditionally applies the change and returns the updated version.
@@ -135,11 +132,10 @@ class Client(channel: ManagedChannel) {
    * @param configuration Updated configuration.
    * @return Whether or not the reconfiguration was successful.
    */
-  def reconfigure(configuration: Configuration): Try[Unit] =
-    Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(1, TimeUnit.SECONDS)
-      .reconfigure(configuration))
-      .filter(_.successful)
+  def reconfigure(configuration: Configuration): Try[Unit] = {
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadline(this.timeout)
+    Try(stub.reconfigure(configuration)).filter(_.successful)
+  }
 
   /**
    * Asynchronously applies the function to all keys in the specified range in chunks of the
@@ -194,10 +190,10 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to prepare.
    * @return Promise.
    */
-  private[beaker] def prepare(proposal: Proposal): Try[Proposal] =
-    Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(1, TimeUnit.SECONDS)
-      .prepare(proposal))
+  private[beaker] def prepare(proposal: Proposal): Try[Proposal] = {
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadline(this.timeout)
+    Try(stub.prepare(proposal))
+  }
 
   /**
    * Requests a vote for a proposal.
@@ -208,12 +204,10 @@ class Client(channel: ManagedChannel) {
   private[beaker] def accept(proposal: Proposal): Future[Unit] = {
     val fork = Context.current().fork()
     val prev = fork.attach()
+    val stub = BeakerGrpc.stub(this.channel).withDeadline(this.timeout)
 
     try {
-      BeakerGrpc.stub(this.channel)
-        .withDeadlineAfter(1, TimeUnit.SECONDS)
-        .accept(proposal)
-        .filter(_.successful)
+        stub.accept(proposal).filter(_.successful)
     } finally {
       fork.detach(prev)
     }
@@ -228,11 +222,10 @@ class Client(channel: ManagedChannel) {
   private[beaker] def learn(proposal: Proposal): Future[Unit] = {
     val fork = Context.current().fork()
     val prev = fork.attach()
+    val stub = BeakerGrpc.stub(this.channel).withDeadline(this.timeout)
 
     try {
-      BeakerGrpc.stub(this.channel)
-        .withDeadlineAfter(1, TimeUnit.SECONDS)
-        .learn(proposal)
+      stub.learn(proposal)
     } finally {
       fork.detach(prev)
     }
@@ -246,28 +239,31 @@ object Client {
    * Constructs a client connected to the specified url.
    *
    * @param url Connect string. ($host:$port)
+   * @param timeout Request timeout.
    * @return Connected client.
    */
-  def apply(url: String): Client =
-    Client(url.split(":").head, url.split(":").last.toInt)
+  def apply(url: String, timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)): Client =
+    Client(url.split(":").head, url.split(":").last.toInt, timeout)
 
   /**
    * Constructs a client connected to the specified address.
    *
    * @param address Network location.
+   * @param timeout Request timeout.
    * @return Connected client.
    */
-  def apply(address: Address): Client =
-    Client(address.name, address.port)
+  def apply(address: Address, timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)): Client =
+    Client(address.name, address.port, timeout)
 
   /**
    * Constructs a client connected to the specified host.
    *
    * @param name Hostname.
    * @param port Port number.
+   * @param timeout Request timeout.
    * @return Connected client.
    */
-  def apply(name: String, port: Int): Client =
-    new Client(ManagedChannelBuilder.forAddress(name, port).usePlaintext(true).build())
+  def apply(name: String, port: Int, timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)): Client =
+    new Client(ManagedChannelBuilder.forAddress(name, port).usePlaintext(true).build(), timeout)
 
 }

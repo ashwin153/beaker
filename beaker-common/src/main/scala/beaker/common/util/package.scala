@@ -81,7 +81,7 @@ package object util extends Retry {
      * @param y An element.
      * @return Filtered sequence.
      */
-    def remove(y: T): Seq[T] = x.filterNot(_ != y)
+    def remove(y: T): Seq[T] = x.filterNot(_ == y)
 
   }
 
