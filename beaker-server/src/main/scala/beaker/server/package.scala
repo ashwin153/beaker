@@ -70,7 +70,7 @@ package object server {
      * @return Whether or not they are equivalent.
      */
     def equivalent(y: Proposal): Boolean =
-      x.commits == y.commits && x.view == y.view
+      x.commits == y.commits
 
     /**
      * Merges the older proposal into the newer proposal by discarding all transactions in the older
