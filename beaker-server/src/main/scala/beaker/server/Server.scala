@@ -4,12 +4,11 @@ import beaker.client._
 import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage._
-
 import io.grpc.ServerBuilder
 import pureconfig._
-
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
+import scala.util.Success
 
 /**
  * A Beaker server.
@@ -81,9 +80,14 @@ case class Server(
       val learners = configuration.learners.remove(this.address)
       val updated = configuration.copy(acceptors = acceptors, learners = learners)
 
-      // Reconfigure the instance out of the configuration.
-      val cluster = Cluster(configuration.acceptors)
-      cluster.random(_.reconfigure(updated)) andThen { _ => cluster.close() }
+      if (updated.acceptors.isEmpty) {
+        // If the cluster is empty, then terminate without reconfiguring.
+        Success(())
+      } else {
+        // Otherwise, reconfigure the instance out of the configuration.
+        val cluster = Cluster(configuration.acceptors)
+        cluster.random(_.reconfigure(updated)) andThen { _ => cluster.close() }
+      }
     } map { _ =>
       // Shutdown the instance.
       this.underlying.shutdown()
