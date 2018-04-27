@@ -114,6 +114,7 @@ case class Proposer(
         // If there exists a newer promise, then reconfigure and retry.
         this.logger.debug(s"${ RED }Stale${ RESET }")
         Thread.sleep(this.backoff.toMillis)
+        reconfigure(promise.view)
         consensus(proposal.copy(ballot = after(promise.ballot), view = promise.view))
       } else if (!promise.equivalent(proposal)) {
         // If the promise does not match the proposal, then retry with the promise.

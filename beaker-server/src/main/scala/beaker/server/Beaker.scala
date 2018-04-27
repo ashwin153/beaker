@@ -93,6 +93,7 @@ case class Beaker(
           .withView(this.proposer.view max proposal.view)
 
         // Promises not to accept any proposal that is older than the promised proposal.
+        this.proposer.after(proposal.ballot)
         this.prepared --= this.prepared.filter(_ <| proposal)
         this.prepared += promise.withBallot(proposal.ballot)
         this.logger.debug(s"${ YELLOW }Prepared${ RESET }  ${ promise.commits.hashCode() }")
