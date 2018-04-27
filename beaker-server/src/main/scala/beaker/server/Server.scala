@@ -79,7 +79,7 @@ case class Server(
       val configuration = this.beaker.proposer.configuration
       val acceptors = configuration.acceptors.remove(this.address)
       val learners = configuration.learners.remove(this.address)
-      val updated  = configuration.copy(acceptors = acceptors, learners = learners)
+      val updated = configuration.copy(acceptors = acceptors, learners = learners)
 
       // Reconfigure the instance out of the configuration.
       val cluster = Cluster(configuration.acceptors)

@@ -112,12 +112,12 @@ case class Proposer(
       val promise = promises.reduce(_ merge _)
       if (proposal.ballot < promise.ballot || proposal.view < promise.view) {
         // If there exists a newer promise, then reconfigure and retry.
-        Thread.sleep(backoff.toMillis)
+        Thread.sleep(this.backoff.toMillis)
         reconfigure(promise.view)
         consensus(proposal.copy(ballot = after(promise.ballot)))
       } else if (!promise.equivalent(proposal)) {
         // If the promise does not match the proposal, then retry with the promise.
-        Thread.sleep(backoff.toMillis)
+        Thread.sleep(this.backoff.toMillis)
         reconfigure(promise.view)
         consensus(promise.copy(ballot = after(promise.ballot)))
       } else {
@@ -143,10 +143,14 @@ case class Proposer(
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
           this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ proposal.commits.hashCode() }")
           this.acceptors.broadcastAsync(_.accept(updated))
-          Thread.sleep(backoff.toMillis)
+          Thread.sleep(this.backoff.toMillis)
           consensus(updated.copy(ballot = after(updated.ballot)))
         }
       }
+    } recoverWith { case _ =>
+      // If consensus fails, then retry with a higher ballot.
+      Thread.sleep(this.backoff.toMillis)
+      consensus(proposal.copy(ballot = after(proposal.ballot)))
     }
   }
 

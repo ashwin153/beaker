@@ -79,7 +79,7 @@ case class Beaker(
   }
 
   override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
-    this.promised.find(_ |> proposal) match {
+    this.promised.find(proposal <| _) match {
       case Some(r) =>
         // If a promise has been made to a newer proposal, its ballot is returned.
         this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode() }")
