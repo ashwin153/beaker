@@ -14,7 +14,11 @@ class Task(body: => Try[Unit]) {
   private val promise: Promise[Unit] = Promise()
   private val thread: Thread = new Thread(() => {
     try {
-      promise.complete(body)
+      val result = body
+      promise.synchronized {
+        if (!promise.isCompleted)
+          promise.complete(result)
+      }
     } catch {
       case _: InterruptedException =>
     }
@@ -26,7 +30,7 @@ class Task(body: => Try[Unit]) {
   /**
    * Completes the task unsuccessfully.
    */
-  def cancel(): Unit = synchronized {
+  def cancel(): Unit = this.promise.synchronized {
     if (!this.promise.isCompleted) {
       this.thread.interrupt()
       this.promise.failure(Task.Cancelled)
@@ -36,7 +40,7 @@ class Task(body: => Try[Unit]) {
   /**
    * Completes the task successfully.
    */
-  def finish(): Unit = synchronized {
+  def finish(): Unit = this.promise.synchronized {
     if (!this.promise.isCompleted) {
       this.thread.interrupt()
       this.promise.success(())
