@@ -31,7 +31,7 @@ class Client(channel: ManagedChannel) {
   def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Try[Map[Key, Version]] = {
     val rset = depends ++ (changes.keySet -- depends.keySet).map(k => k -> 0L)
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
-    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
     Try(stub.propose(Transaction(rset, wset))).filter(_.successful).map(_ => wset.mapValues(_.version))
   }
 
@@ -40,7 +40,6 @@ class Client(channel: ManagedChannel) {
    *
    * @param depends Dependencies.
    * @param changes Changes to apply.
-   * @throws Exception If changes could not be applied.
    * @return Updated versions.
    */
   def cas(depends: util.Map[Key, Version], changes: util.Map[Key, Value]): Try[util.Map[Key, Version]] =
@@ -66,7 +65,7 @@ class Client(channel: ManagedChannel) {
    * @return Revisions of keys.
    */
   def get(keys: Iterable[Key]): Try[Map[Key, Revision]] = {
-    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
     Try(stub.get(Keys(keys.toSeq)).entries)
   }
 
@@ -95,7 +94,7 @@ class Client(channel: ManagedChannel) {
    * @return Network configuration.
    */
   def network(): Try[View] = {
-    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
     Try(stub.network(Void()))
   }
 
@@ -134,7 +133,7 @@ class Client(channel: ManagedChannel) {
    * @return Whether or not the reconfiguration was successful.
    */
   def reconfigure(configuration: Configuration): Try[Unit] = {
-    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
     Try(stub.reconfigure(configuration)).filter(_.successful)
   }
 
@@ -192,7 +191,7 @@ class Client(channel: ManagedChannel) {
    * @return Promise.
    */
   private[beaker] def prepare(proposal: Proposal): Try[Proposal] = {
-    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
     Try(stub.prepare(proposal))
   }
 
@@ -205,7 +204,7 @@ class Client(channel: ManagedChannel) {
   private[beaker] def accept(proposal: Proposal): Future[Unit] = {
     val fork = Context.current().fork()
     val prev = fork.attach()
-    val stub = BeakerGrpc.stub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.stub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
 
     try {
         stub.accept(proposal).filter(_.successful)
@@ -223,7 +222,7 @@ class Client(channel: ManagedChannel) {
   private[beaker] def learn(proposal: Proposal): Future[Unit] = {
     val fork = Context.current().fork()
     val prev = fork.attach()
-    val stub = BeakerGrpc.stub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    val stub = BeakerGrpc.stub(this.channel).withDeadlineAfter(250, TimeUnit.MILLISECONDS)
 
     try {
       stub.learn(proposal)
