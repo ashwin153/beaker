@@ -90,7 +90,7 @@ case class Beaker(
         val promise = this.accepted.filter(_ <| proposal)
           .reduceOption(_ merge _)
           .getOrElse(proposal.withBallot(Ballot.defaultInstance))
-          .withView(this.proposer.view max proposal.view)
+          .withView(this.proposer.view min proposal.view)
 
         // Promises not to accept any proposal that is older than the promised proposal.
         this.prepared --= this.prepared.filter(_ <| proposal)

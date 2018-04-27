@@ -115,12 +115,11 @@ case class Proposer(
         this.logger.debug(s"${ RED }Stale${ RESET }")
         Thread.sleep(this.backoff.toMillis)
         reconfigure(promise.view)
-        consensus(proposal.copy(ballot = after(promise.ballot)))
+        consensus(proposal.copy(ballot = after(promise.ballot), view = promise.view))
       } else if (!promise.equivalent(proposal)) {
         // If the promise does not match the proposal, then retry with the promise.
         this.logger.debug(s"${ RED }Recovering${ RESET }")
         Thread.sleep(this.backoff.toMillis)
-        reconfigure(promise.view)
         consensus(promise.copy(ballot = after(promise.ballot)))
       } else {
         // Otherwise, get all keys in the proposal from a quorum.
