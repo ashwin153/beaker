@@ -25,7 +25,7 @@ case class Server(
 
   private[this] val underlying = ServerBuilder
     .forPort(this.address.port)
-    .executor(Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors()))
+//    .executor(Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors()))
     .addService(BeakerGrpc.bindService(this.beaker, global))
     .build()
 
