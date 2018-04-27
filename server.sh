@@ -22,9 +22,9 @@ while getopts ":hc:l:o:p:" opt; do
     c ) eval cp ${OPTARG} /beaker-server/src/main/resources/application.conf
         trap 'rm /beaker-server/src/main/resources/application.conf' EXIT
         ;;
-    l ) OPTS+="--jvm-run-jvm-options="\""-Dlog4j.configuration=file:${OPTARG}"\"" "
+    l ) OPTS+=" --jvm-run-jvm-options="\""-Dlog4j.configuration=file:${OPTARG}"\"
         ;;
-    o ) OPTS+="--jvm-run-jvm-options="\""-D${OPTARG}"\"" "
+    o ) OPTS+=" --jvm-run-jvm-options="\""-D${OPTARG}"\"
         ;;
     p ) PORT=${OPTARG}
         ;;
@@ -32,7 +32,7 @@ while getopts ":hc:l:o:p:" opt; do
 done
 
 HOST=$(hostname -I | cut -d' ' -f1)
-OPTS+="--jvm-run-jvm-options="\""-Dbeaker.server.address=${HOST}:${PORT}"\"
+OPTS+=" --jvm-run-jvm-options="\""-Dbeaker.server.address=${HOST}:${PORT}"\"
 
 ####################################################################################################
 #                                        JVM Configuration                                         #
@@ -42,7 +42,7 @@ FREE=$( free -m | awk  'FNR == 2 {print $4}')
 LOG2=$( echo "l($FREE)/l(2)" | bc -l )
 MAX_HEAP=$(( 1 << ${LOG2%.*} ))
 MIN_HEAP=$(( 1 << ${LOG2%.*} - 1 ))
-OPTS+="--jvm-run-jvm-options="\""-Xms${MIN_HEAP}M -Xmx${MAX_HEAP}M"\"
+OPTS+=" --jvm-run-jvm-options="\""-Xms${MIN_HEAP}M -Xmx${MAX_HEAP}M"\"
 
 ####################################################################################################
 #                                        Bootstrap Server                                          #
