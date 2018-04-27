@@ -140,6 +140,7 @@ case class Proposer(
           proposal.copy(commits = commits, repairs = proposal.repairs maximum repairs)
         } filter { updated =>
           // Filter proposal that contain transactions or repairs or a new view.
+          this.logger.debug(s"${ CYAN }Read${ RESET }      ${ proposal.commits.hashCode() }")
           updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
