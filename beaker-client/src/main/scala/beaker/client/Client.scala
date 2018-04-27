@@ -18,7 +18,10 @@ import scala.util.Try
  * @param channel Underlying channel.
  * @param timeout Request timeout.
  */
-class Client(channel: ManagedChannel, timeout: Deadline) {
+class Client(
+  channel: ManagedChannel,
+  timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)
+) {
 
   /**
    * Conditionally applies the changes if the dependencies remain unchanged.
@@ -239,31 +242,28 @@ object Client {
    * Constructs a client connected to the specified url.
    *
    * @param url Connect string. ($host:$port)
-   * @param timeout Request timeout.
    * @return Connected client.
    */
-  def apply(url: String, timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)): Client =
-    Client(url.split(":").head, url.split(":").last.toInt, timeout)
+  def apply(url: String): Client =
+    Client(url.split(":").head, url.split(":").last.toInt)
 
   /**
    * Constructs a client connected to the specified address.
    *
    * @param address Network location.
-   * @param timeout Request timeout.
    * @return Connected client.
    */
-  def apply(address: Address, timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)): Client =
-    Client(address.name, address.port, timeout)
+  def apply(address: Address): Client =
+    Client(address.name, address.port)
 
   /**
    * Constructs a client connected to the specified host.
    *
    * @param name Hostname.
    * @param port Port number.
-   * @param timeout Request timeout.
    * @return Connected client.
    */
-  def apply(name: String, port: Int, timeout: Deadline = Deadline.after(1, TimeUnit.SECONDS)): Client =
-    new Client(ManagedChannelBuilder.forAddress(name, port).usePlaintext(true).build(), timeout)
+  def apply(name: String, port: Int): Client =
+    new Client(ManagedChannelBuilder.forAddress(name, port).usePlaintext(true).build())
 
 }
