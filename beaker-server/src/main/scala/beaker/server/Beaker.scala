@@ -27,7 +27,7 @@ case class Beaker(
 
   private[this] val configuring: mutable.Map[View, Task] = mutable.Map.empty
   private[this] val proposing: mutable.Map[Transaction, Task] = mutable.Map.empty
-  private[this] val promised: mutable.Set[Proposal] = mutable.Set.empty
+  private[this] val prepared: mutable.Set[Proposal] = mutable.Set.empty
   private[this] val accepted: mutable.Set[Proposal] = mutable.Set.empty
   private[this] val learned: mutable.Map[Proposal, Int] = mutable.Map.empty
 
@@ -79,7 +79,7 @@ case class Beaker(
   }
 
   override def prepare(proposal: Proposal): Future[Proposal] = synchronized {
-    this.promised.find(proposal <| _) match {
+    this.prepared.find(proposal <| _) match {
       case Some(r) =>
         // If a promise has been made to a newer proposal, its ballot is returned.
         this.logger.debug(s"${ RED }Rejected${ RESET }  ${ proposal.commits.hashCode() }")
@@ -93,15 +93,15 @@ case class Beaker(
           .withView(this.proposer.view max proposal.view)
 
         // Promises not to accept any proposal that is older than the promised proposal.
-        this.promised --= this.promised.filter(_ <| proposal)
-        this.promised += promise.withBallot(proposal.ballot)
+        this.prepared --= this.prepared.filter(_ <| proposal)
+        this.prepared += promise.withBallot(proposal.ballot)
         this.logger.debug(s"${ YELLOW }Prepared${ RESET }  ${ promise.commits.hashCode() }")
         Future(promise)
     }
   }
 
   override def accept(proposal: Proposal): Future[Result] = synchronized {
-    if (!this.promised.exists(_ |> proposal)) {
+    if (!this.prepared.exists(_ |> proposal)) {
       // If it has not promised not to accept the proposal, then it votes for the proposal.
       this.accepted --= this.accepted.filter(_ <| proposal)
       this.accepted += proposal
@@ -123,14 +123,14 @@ case class Beaker(
 
     if (this.learned(proposal) == proposal.view.configuration.acceptors.size + 1) {
       // If the proposal receives a majority of votes, then commit it.
-      val transactions = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
-      transactions.foreach(this.archive.commit)
+      val commits = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
+      commits.foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
-      this.promised -= proposal
-      this.accepted -= proposal
+      this.prepared --= this.prepared.filter(_ conflicts commits)
+      this.accepted --= this.accepted.filter(_ conflicts commits)
 
-      this.proposing.removeKeys(transactions.contains).values.foreach(_.finish())
-      this.proposing.removeKeys(t => transactions.exists(_ ~ t)).values.foreach(_.cancel())
+      this.proposing.removeKeys(commits.contains).values.foreach(_.finish())
+      this.proposing.removeKeys(t => commits.exists(_ ~ t)).values.foreach(_.cancel())
       this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
       this.configuring.removeKeys(_ < proposal.view).values.foreach(_.cancel())
       this.logger.debug(s"${ GREEN }Learned${ RESET }   ${ proposal.commits.hashCode() }")

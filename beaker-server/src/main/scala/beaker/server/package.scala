@@ -55,6 +55,15 @@ package object server {
   implicit class ProposalOps(x: Proposal) {
 
     /**
+     * Returns whether or not the proposal conflicts with the specified sequence of transactions.
+     *
+     * @param y Transactions.
+     * @return Whether or not they conflict.
+     */
+    def conflicts(y: Seq[Transaction]): Boolean =
+      x.commits.exists(t => y.contains(t) || y.exists(_ ~ t))
+
+    /**
      * Returns whether or not the proposal commit the same transactions in the same configuration.
      *
      * @param y A proposal.
