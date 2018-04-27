@@ -2,11 +2,10 @@ package beaker.client
 
 import beaker.common.util._
 import beaker.server.protobuf._
-
 import io.grpc.stub.StreamObserver
 import io.grpc.{Context, ManagedChannel, ManagedChannelBuilder}
-
 import java.util
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits._
@@ -30,8 +29,12 @@ class Client(channel: ManagedChannel) {
   def cas(depends: Map[Key, Version], changes: Map[Key, Value]): Try[Map[Key, Version]] = {
     val rset = depends ++ (changes.keySet -- depends.keySet).map(k => k -> 0L)
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
-    val result = Try(BeakerGrpc.blockingStub(this.channel).propose(Transaction(rset, wset)))
-    result.filter(_.successful).map(_ => wset.mapValues(_.version))
+
+    Try(BeakerGrpc.blockingStub(this.channel)
+      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .propose(Transaction(rset, wset)))
+      .filter(_.successful)
+      .map(_ => wset.mapValues(_.version))
   }
 
   /**
@@ -65,7 +68,9 @@ class Client(channel: ManagedChannel) {
    * @return Revisions of keys.
    */
   def get(keys: Iterable[Key]): Try[Map[Key, Revision]] =
-    Try(BeakerGrpc.blockingStub(this.channel).get(Keys(keys.toSeq)).entries)
+    Try(BeakerGrpc.blockingStub(this.channel)
+      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .get(Keys(keys.toSeq)).entries)
 
   /**
    * Returns the revisions of the keys.
@@ -92,7 +97,9 @@ class Client(channel: ManagedChannel) {
    * @return Network configuration.
    */
   def network(): Try[View] =
-    Try(BeakerGrpc.blockingStub(this.channel).network(Void()))
+    Try(BeakerGrpc.blockingStub(this.channel)
+      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .network(Void()))
 
   /**
    * Conditionally applies the change and returns the updated version.
@@ -129,7 +136,10 @@ class Client(channel: ManagedChannel) {
    * @return Whether or not the reconfiguration was successful.
    */
   def reconfigure(configuration: Configuration): Try[Unit] =
-    Try(BeakerGrpc.blockingStub(this.channel).reconfigure(configuration)).filter(_.successful)
+    Try(BeakerGrpc.blockingStub(this.channel)
+      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .reconfigure(configuration))
+      .filter(_.successful)
 
   /**
    * Asynchronously applies the function to all keys in the specified range in chunks of the
@@ -185,7 +195,9 @@ class Client(channel: ManagedChannel) {
    * @return Promise.
    */
   private[beaker] def prepare(proposal: Proposal): Try[Proposal] =
-    Try(BeakerGrpc.blockingStub(this.channel).prepare(proposal))
+    Try(BeakerGrpc.blockingStub(this.channel)
+      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .prepare(proposal))
 
   /**
    * Requests a vote for a proposal.
@@ -198,7 +210,10 @@ class Client(channel: ManagedChannel) {
     val prev = fork.attach()
 
     try {
-      BeakerGrpc.stub(this.channel).accept(proposal).filter(_.successful)
+      BeakerGrpc.stub(this.channel)
+        .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+        .accept(proposal)
+        .filter(_.successful)
     } finally {
       fork.detach(prev)
     }
@@ -215,7 +230,9 @@ class Client(channel: ManagedChannel) {
     val prev = fork.attach()
 
     try {
-      BeakerGrpc.stub(this.channel).learn(proposal)
+      BeakerGrpc.stub(this.channel)
+        .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+        .learn(proposal)
     } finally {
       fork.detach(prev)
     }
