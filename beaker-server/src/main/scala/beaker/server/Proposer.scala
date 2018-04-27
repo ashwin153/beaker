@@ -137,19 +137,17 @@ case class Proposer(
           val changes = commits.flatMap(_.changes.keySet)
           val repairs = (latest -- changes) filter { case (k, r) => oldest(k) < r }
           proposal.copy(commits = commits, repairs = proposal.repairs maximum repairs)
+        } filter { updated =>
+          // Filter proposal that contain transactions or repairs or a new view.
+          updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
           this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ updated.commits.hashCode() }")
           this.acceptors.broadcastAsync(_.accept(updated))
           Thread.sleep(this.backoff.toMillis)
-          consensus(proposal.copy(ballot = after(updated.ballot)))
+          consensus(proposal.copy(ballot = after(proposal.ballot)))
         }
       }
-    } recoverWith { case _ =>
-      // If consensus fails, then retry with a higher ballot.
-      this.logger.debug(s"${ RED }Minority${ RESET }")
-      Thread.sleep(this.backoff.toMillis)
-      consensus(proposal.copy(ballot = after(proposal.ballot)))
     }
   }
 
