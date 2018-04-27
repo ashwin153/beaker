@@ -31,7 +31,7 @@ class Client(channel: ManagedChannel) {
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
 
     Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .withDeadlineAfter(1, TimeUnit.SECONDS)
       .propose(Transaction(rset, wset)))
       .filter(_.successful)
       .map(_ => wset.mapValues(_.version))
@@ -69,7 +69,7 @@ class Client(channel: ManagedChannel) {
    */
   def get(keys: Iterable[Key]): Try[Map[Key, Revision]] =
     Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .withDeadlineAfter(1, TimeUnit.SECONDS)
       .get(Keys(keys.toSeq)).entries)
 
   /**
@@ -98,7 +98,7 @@ class Client(channel: ManagedChannel) {
    */
   def network(): Try[View] =
     Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .withDeadlineAfter(1, TimeUnit.SECONDS)
       .network(Void()))
 
   /**
@@ -137,7 +137,7 @@ class Client(channel: ManagedChannel) {
    */
   def reconfigure(configuration: Configuration): Try[Unit] =
     Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .withDeadlineAfter(1, TimeUnit.SECONDS)
       .reconfigure(configuration))
       .filter(_.successful)
 
@@ -196,7 +196,7 @@ class Client(channel: ManagedChannel) {
    */
   private[beaker] def prepare(proposal: Proposal): Try[Proposal] =
     Try(BeakerGrpc.blockingStub(this.channel)
-      .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+      .withDeadlineAfter(1, TimeUnit.SECONDS)
       .prepare(proposal))
 
   /**
@@ -211,7 +211,7 @@ class Client(channel: ManagedChannel) {
 
     try {
       BeakerGrpc.stub(this.channel)
-        .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+        .withDeadlineAfter(1, TimeUnit.SECONDS)
         .accept(proposal)
         .filter(_.successful)
     } finally {
@@ -231,7 +231,7 @@ class Client(channel: ManagedChannel) {
 
     try {
       BeakerGrpc.stub(this.channel)
-        .withDeadlineAfter(50, TimeUnit.MILLISECONDS)
+        .withDeadlineAfter(1, TimeUnit.SECONDS)
         .learn(proposal)
     } finally {
       fork.detach(prev)
