@@ -138,6 +138,9 @@ case class Proposer(
           val changes = commits.flatMap(_.changes.keySet)
           val repairs = (latest -- changes) filter { case (k, r) => oldest(k) < r }
           proposal.copy(commits = commits, repairs = proposal.repairs maximum repairs)
+        } filter { updated =>
+          // Filter proposal that contain transactions or repairs or a new view.
+          updated.commits.nonEmpty || updated.repairs.nonEmpty || updated.view > this.view
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
           this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ proposal.commits.hashCode() }")
