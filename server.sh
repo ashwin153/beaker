@@ -1,11 +1,10 @@
 #!/bin/bash
 ####################################################################################################
-#                                         Bootstrap Server                                         #
+#                                        Server Configuration                                      #
 #  https://github.com/ashwin153/beaker/blob/master/beaker-server/src/main/resources/reference.conf #
 ####################################################################################################
-host=$(hostname -I | cut -d' ' -f1)
-port=9090
-opts=""
+PORT=9090
+OPTS=""
 
 while getopts ":hc:l:o:p:" opt; do
   case $opt in
@@ -23,14 +22,30 @@ while getopts ":hc:l:o:p:" opt; do
     c ) eval cp ${OPTARG} /beaker-server/src/main/resources/application.conf
         trap 'rm /beaker-server/src/main/resources/application.conf' EXIT
         ;;
-    l ) opts+="--jvm-run-jvm-options="\""-Dlog4j.configuration=file:${OPTARG}"\"" "
+    l ) OPTS+="--jvm-run-jvm-options="\""-Dlog4j.configuration=file:${OPTARG}"\"" "
         ;;
-    o ) opts+="--jvm-run-jvm-options="\""-D${OPTARG}"\"" "
+    o ) OPTS+="--jvm-run-jvm-options="\""-D${OPTARG}"\"" "
         ;;
-    p ) port=${OPTARG}
+    p ) PORT=${OPTARG}
         ;;
   esac
 done
 
-opts+="--jvm-run-jvm-options="\""-Dbeaker.server.address=${host}:${port}"\"
-eval ./pants run beaker-server/src/main/scala:bin ${opts}
+HOST=$(hostname -I | cut -d' ' -f1)
+OPTS+="--jvm-run-jvm-options="\""-Dbeaker.server.address=${HOST}:${PORT}"\"
+
+####################################################################################################
+#                                        JVM Configuration                                         #
+#  https://github.com/ashwin153/beaker/blob/master/beaker-server/src/main/resources/reference.conf #
+####################################################################################################
+FREE=$( free -m | awk  'FNR == 2 {print $4}')
+LOG2=$( echo "l($FREE)/l(2)" | bc -l )
+MAX_HEAP=$(( 1 << ${LOG2%.*} ))
+MIN_HEAP=$(( 1 << ${LOG2%.*} - 1 ))
+OPTS+="--jvm-run-jvm-options="\""-Xms${MIN_HEAP}M -Xmx${MAX_HEAP}M"\"
+
+####################################################################################################
+#                                        Bootstrap Server                                          #
+#                  https://github.com/ashwin153/beaker/tree/master/beaker-server                   #
+####################################################################################################
+eval ./pants run beaker-server/src/main/scala:bin ${OPTS}

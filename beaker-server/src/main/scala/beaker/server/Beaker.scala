@@ -102,7 +102,7 @@ case class Beaker(
 
   override def accept(proposal: Proposal): Future[Result] = synchronized {
     if (!this.promised.exists(_ |> proposal)) {
-      // If the beaker has not promised not to accept the proposal, then it votes for it.
+      // If it has not promised not to accept the proposal, then it votes for the proposal.
       this.accepted --= this.accepted.filter(_ <| proposal)
       this.accepted += proposal
       this.proposer.learners.broadcastAsync(_.learn(proposal))
@@ -122,17 +122,12 @@ case class Beaker(
     this.learned(proposal) = this.learned.getOrElse(proposal, 0) + 1
 
     if (this.learned(proposal) == this.proposer.acceptors.size / 2 + 1) {
-      // If the proposal receives a majority of votes, then commit its transactions and repairs,
-      // and update the current configuration.
+      // If the proposal receives a majority of votes, then commit it.
       val transactions = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
       transactions.foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
 
-      // Clear the consensus state.
-      this.promised -= proposal
-      this.accepted -= proposal
-
-      // Complete consensus on conflicting transactions and views.
+      this.accepted.filter(p => p == proposal || p <| proposal).foreach(this.accepted -= _)
       this.proposing.removeKeys(transactions.contains).values.foreach(_.finish())
       this.proposing.removeKeys(t => transactions.exists(_ ~ t)).values.foreach(_.cancel())
       this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
