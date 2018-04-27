@@ -84,7 +84,7 @@ package object server {
       val (latest, oldest) = if (x <| y) (y, x) else (x, y)
       val commits = latest.commits ++ oldest.commits.filterNot(t => latest.commits.exists(_ ~ t))
       val repairs = latest.repairs maximum oldest.repairs
-      latest.copy(commits = commits, repairs = repairs)
+      latest.copy(ballot = latest.ballot max oldest.ballot, commits = commits, repairs = repairs)
     }
 
   }
