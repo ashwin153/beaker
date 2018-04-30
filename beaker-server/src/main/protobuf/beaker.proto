@@ -153,29 +153,31 @@ message Proposal {
  * A distributed, transactional key-value store.
  */
 service Beaker {
-
-  /**
-   * Requests a vote for a proposal. Beakers cast a vote for a proposal if and only if a promise has
-   * not been made to a newer proposal.
-   */
-  rpc Accept(Proposal) returns (Result);
-
+  
   /**
    * Returns the latest revision of each key.
    */
   rpc Get(Keys) returns (Revisions);
 
   /**
-   * Casts a vote for a proposal. Beakers commit the proposal's transactions and repairs of once a
-   * quorum of the acceptors in the proposal's configuration vote for it. If the proposal has a
-   * newer configuration, then update the current configuration.
+   * Returns the latest revisions of every key.
    */
-  rpc Learn(Proposal) returns (Void);
+  rpc Scan(stream Range) returns (stream Revisions);
 
   /**
    * Returns the current view of the network configuration.
    */
   rpc Network(Void) returns (View);
+
+  /**
+   * Attempts to consistently update the network configuration.
+   */
+  rpc Reconfigure(Configuration) returns (Result);
+
+  /**
+   * Conditionally applies its changes if and only if it depends on the latest versions.
+   */
+  rpc Propose(Transaction) returns (Result);
 
   /**
    * Makes a promise not to accept any proposal that conflicts with the proposal it returns and has
@@ -186,18 +188,16 @@ service Beaker {
   rpc Prepare(Proposal) returns (Proposal);
 
   /**
-   * Conditionally applies its changes if and only if it depends on the latest versions.
+   * Requests a vote for a proposal. Beakers cast a vote for a proposal if and only if a promise has
+   * not been made to a newer proposal.
    */
-  rpc Propose(Transaction) returns (Result);
+  rpc Accept(Proposal) returns (Result);
 
   /**
-   * Attempts to consistently update the network configuration.
+   * Casts a vote for a proposal. Beakers commit the proposal's transactions and repairs of once a
+   * quorum of the acceptors in the proposal's configuration vote for it. If the proposal has a
+   * newer configuration, then update the current configuration.
    */
-  rpc Reconfigure(Configuration) returns (Result);
-
-  /**
-   * Returns the latest revisions of every key.
-   */
-  rpc Scan(stream Range) returns (stream Revisions);
+  rpc Learn(Proposal) returns (Void);
 
 }
