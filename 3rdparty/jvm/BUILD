@@ -44,14 +44,14 @@ jar_library(name='rediscala', jars=[
 ])
 
 # Scala Logging
-jar_library(name='scala-logging', jars = [
+jar_library(name='scala-logging', jars=[
     jar(org='com.typesafe.scala-logging', name='scala-logging_2.12', rev='3.9.0')
 ])
 
 
 # ScalaPB Runtime
-jar_library(name='scalapb-runtime', jars = [
-    jar(org='com.trueaccord.scalapb', name='scalapb-runtime_2.12', rev='0.6.7')
+jar_library(name='scalapb-runtime', jars=[
+    jar(org='com.thesamet.scalapb', name='scalapb-runtime_2.12', rev='0.7.4')
 ])
 
 # SLF4J
@@ -68,7 +68,7 @@ jar_library(name='ammonite', jars=[
 ])
 
 # Protobuf
-jar_library(name='protobuf', jars = [
+jar_library(name='protobuf', jars=[
     jar(org='com.google.protobuf', name='protobuf-java', rev='3.1.0'),
 ])
 
@@ -88,8 +88,8 @@ jar_library(name='scala-reflect', jars=[
 ])
 
 # ScalaPB gRPC
-jar_library(name='scalapb-runtime-grpc', jars = [
-    jar(org='com.trueaccord.scalapb', name='scalapb-runtime-grpc_2.12', rev='0.6.7')
+jar_library(name='scalapb-runtime-grpc', jars=[
+    jar(org='com.thesamet.scalapb', name='scalapb-runtime-grpc_2.12', rev='0.7.4')
 ])
 
 # ScalaPB Compiler
