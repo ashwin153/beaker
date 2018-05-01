@@ -94,7 +94,7 @@ jar_library(name='scalapb-runtime-grpc', jars=[
 
 # ScalaPB Compiler
 jar_library(name='scalapbc', jars=[
-    scala_jar(org='com.trueaccord.scalapb', name='scalapbc', rev='0.6.7'),
+    scala_jar(org='com.thesamet.scalapb', name='scalapbc', rev='0.7.4'),
 ])
 
 ####################################################################################################

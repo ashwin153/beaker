@@ -261,6 +261,6 @@ object Client {
    * @return Connected client.
    */
   def apply(name: String, port: Int): Client =
-    new Client(ManagedChannelBuilder.forAddress(name, port).usePlaintext(true).build())
+    new Client(ManagedChannelBuilder.forAddress(name, port).usePlaintext().build())
 
 }
