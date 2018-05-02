@@ -1,10 +1,12 @@
 package beaker.common.concurrent
 
 import beaker.common.util.Relation
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent._
+import scala.concurrent.ExecutionContext.Implicits._
 import scala.util.Try
 
 /**
@@ -61,30 +63,31 @@ class Executor[T](relation: Relation[T]) {
     val scheduled = new CountDownLatch(1)
     val promise = Promise[U]()
 
-    val execute = new Thread(() => {
-      this.lock.lock()
-      try {
-        // Schedule the transaction in the first available epoch.
-        val deps = this.schedule.filterKeys(relation.related(_, arg))
-        val date = if (deps.isEmpty) this.epoch + 1 else deps.values.max + 1
-        this.schedule += arg -> date
-        scheduled.countDown()
+    Future {
+      blocking {
+        this.lock.lock()
+        try {
+          // Schedule the transaction in the first available epoch.
+          val deps = this.schedule.filterKeys(relation.related(_, arg))
+          val date = if (deps.isEmpty) this.epoch + 1 else deps.values.max + 1
+          this.schedule += arg -> date
+          scheduled.countDown()
 
-        // Wait for its epoch.
-        val wait = this.horizon.getOrElseUpdate(date, this.lock.newCondition())
-        this.nonEmpty.signalAll()
-        wait.await()
+          // Wait for its epoch.
+          val wait = this.horizon.getOrElseUpdate(date, this.lock.newCondition())
+          this.nonEmpty.signalAll()
+          wait.await()
 
-        // Remove the transaction from the schedule.
-        this.schedule -= arg
-      } finally {
-        this.lock.unlock()
-        promise.complete(command(arg))
-        this.barrier.countDown()
+          // Remove the transaction from the schedule.
+          this.schedule -= arg
+        } finally {
+          this.lock.unlock()
+          promise.complete(command(arg))
+          this.barrier.countDown()
+        }
       }
-    })
+    }
 
-    execute.start()
     scheduled.await()
     promise.future
   }
