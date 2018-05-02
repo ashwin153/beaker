@@ -30,14 +30,14 @@ class Executor[T](relation: Relation[T]) {
     this.lock.lock()
     try {
       this.horizon.get(this.epoch + 1) match {
-        case Some(waiting) if this.lock.getWaitQueueLength(waiting) > 0 =>
+        case None =>
+          // Wait until a transaction is scheduled.
+          this.nonEmpty.await()
+        case Some(waiting) =>
           // Wait for all transactions in the current epoch to complete.
           this.barrier = new CountDownLatch(this.lock.getWaitQueueLength(waiting))
           this.epoch += 1
           waiting.signalAll()
-        case _ =>
-          // Wait until a transaction is scheduled.
-          this.nonEmpty.await()
       }
     } finally {
       this.lock.unlock()
