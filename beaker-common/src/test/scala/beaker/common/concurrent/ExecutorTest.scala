@@ -14,7 +14,7 @@ import scala.util.Try
 class ExecutorTest extends FunSuite with Matchers with ScalaFutures {
 
   test("Related tasks are sequential") {
-    val executor  = new Executor[Int](Relation.Total)
+    val executor  = Executor[Int]()(Relation.Total)
     val scheduled = new CountDownLatch(1)
     val barrier   = new CountDownLatch(1)
 
@@ -30,7 +30,7 @@ class ExecutorTest extends FunSuite with Matchers with ScalaFutures {
   }
 
   test("Unrelated tasks are concurrent") {
-    val executor  = new Executor[Int](Relation.Identity)
+    val executor  = Executor[Int]()(Relation.Identity)
     val scheduled = new CountDownLatch(1)
     val barrier   = new CountDownLatch(2)
 

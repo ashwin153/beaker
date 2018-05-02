@@ -1,9 +1,11 @@
 package beaker.common.concurrent
 
-import beaker.common.util.Relation
-import java.util.concurrent.{CountDownLatch, ExecutorService, Executors, Phaser}
+import beaker.common.concurrent.Executor.Command
+import beaker.common.util._
+import java.util.concurrent._
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -15,38 +17,26 @@ import scala.util.Try
  * @see https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf
  * @param relation Command relation.
  */
-class Executor[T](relation: Relation[T]) {
+case class Executor[T](implicit relation: Relation[T]) {
 
-  private[this] var epoch: Long = 0L
-  private[this] val horizon: mutable.Map[Long, Condition] = mutable.Map.empty
-  private[this] val schedule: mutable.Map[T, Long] = mutable.Map.empty
-  private[this] val lock: ReentrantLock = new ReentrantLock
-  private[this] val phaser: Phaser = new Phaser(1)
-  private[this] val nonEmpty: Condition = this.lock.newCondition()
-  private[this] val underlying: ExecutorService = Executors.newCachedThreadPool()
+  //
+  private[this] val queue: LinkedBlockingQueue[Command[T]] = new LinkedBlockingQueue()
+  private[this] val worker: ExecutorService = Executors.newCachedThreadPool()
 
-  private[this] val clock = Task.indefinitely {
-    this.lock.lock()
-    try {
-      this.horizon.get(this.epoch + 1) match {
-        case None =>
-          // Wait until a transaction is scheduled.
-          this.nonEmpty.await()
-        case Some(waiting) =>
-          // Wait for all transactions in the current epoch to complete.
-          this.phaser.bulkRegister(this.lock.getWaitQueueLength(waiting))
-          this.epoch += 1
-          waiting.signalAll()
-      }
-    } finally {
-      this.lock.unlock()
-      this.phaser.arriveAndAwaitAdvance()
-    }
+  //
+  private[this] val clock: Task = Task.indefinitely {
+    val group = mutable.Buffer(this.queue.take())
+    while (this.queue.peek() != null && !group.exists(cmd => cmd.arg ~ this.queue.peek().arg))
+      group += this.queue.take()
+    group.map(cmd => this.worker.submit(cmd.run)).foreach(_.get())
   }
 
+  /**
+   *
+   */
   def close(): Unit = {
     this.clock.cancel()
-    this.phaser.forceTermination()
+    this.worker.shutdown()
   }
 
   /**
@@ -55,37 +45,12 @@ class Executor[T](relation: Relation[T]) {
    * before B.
    *
    * @param arg Command argument.
-   * @param command Command to execute.
+   * @param f Command to execute.
    * @return Future containing result of command execution.
    */
-  def submit[U](arg: T)(command: T => Try[U]): Future[U] = {
-    val scheduled = new CountDownLatch(1)
+  def submit[U](arg: T)(f: T => Try[U]): Future[U] = {
     val promise = Promise[U]()
-
-    this.underlying.submit(() => {
-      this.lock.lock()
-      try {
-        // Schedule the transaction in the first available epoch.
-        val deps = this.schedule.filterKeys(relation.related(_, arg))
-        val date = if (deps.isEmpty) this.epoch + 1 else deps.values.max + 1
-        this.schedule += arg -> date
-        scheduled.countDown()
-
-        // Wait for its epoch.
-        val wait = this.horizon.getOrElseUpdate(date, this.lock.newCondition())
-        this.nonEmpty.signalAll()
-        wait.await()
-
-        // Remove the transaction from the schedule.
-        this.schedule -= arg
-      } finally {
-        this.lock.unlock()
-        promise.complete(command(arg))
-        this.phaser.arriveAndDeregister()
-      }
-    })
-
-    scheduled.await()
+    this.queue.offer(Command(arg, () => promise.complete(f(arg))))
     promise.future
   }
 
@@ -94,11 +59,11 @@ class Executor[T](relation: Relation[T]) {
 object Executor {
 
   /**
-   * Constructs an executor from the implicit relation.
    *
-   * @param relation Command relation.
-   * @return Executor on relation.
+   * @param arg
+   * @param run
+   * @tparam T
    */
-  def apply[T]()(implicit relation: Relation[T]): Executor[T] = new Executor[T](relation)
+  case class Command[T](arg: T, run: Runnable)
 
 }
