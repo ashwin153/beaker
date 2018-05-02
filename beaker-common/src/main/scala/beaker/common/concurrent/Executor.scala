@@ -1,7 +1,7 @@
 package beaker.common.concurrent
 
 import beaker.common.util.Relation
-import java.io.Closeable
+
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
@@ -18,21 +18,25 @@ import scala.util.Try
  */
 class Executor[T](relation: Relation[T]) {
 
-  private[this] var epoch    : Long                         = 0L
-  private[this] val horizon  : mutable.Map[Long, Condition] = mutable.Map.empty
-  private[this] val schedule : mutable.Map[T, Long]         = mutable.Map.empty
-  private[this] val lock     : ReentrantLock                = new ReentrantLock
-  private[this] var barrier  : CountDownLatch               = new CountDownLatch(0)
+  private[this] var epoch: Long = 0L
+  private[this] val horizon: mutable.Map[Long, Condition] = mutable.Map.empty
+  private[this] val schedule: mutable.Map[T, Long] = mutable.Map.empty
+  private[this] val lock: ReentrantLock = new ReentrantLock
+  private[this] var barrier: CountDownLatch = new CountDownLatch(0)
+  private[this] val nonEmpty: Condition = this.lock.newCondition()
 
-  // Indefinitely and asynchronously perform all scheduled tasks in the current epoch, block
-  // until they all complete, and increment the epoch.
   private[this] val clock = Task.indefinitely {
     this.lock.lock()
     try {
-      this.horizon.get(this.epoch + 1).filter(this.lock.getWaitQueueLength(_) > 0) foreach { tick =>
-        this.barrier = new CountDownLatch(this.lock.getWaitQueueLength(tick))
-        this.epoch += 1
-        tick.signalAll()
+      this.horizon.get(this.epoch) match {
+        case Some(waiting) if this.lock.getWaitQueueLength(waiting) > 0 =>
+          // Wait for all transactions in the current epoch to complete.
+          this.barrier = new CountDownLatch(this.lock.getWaitQueueLength(waiting))
+          this.epoch += 1
+          waiting.signalAll()
+        case _ =>
+          // Wait until a transaction is scheduled.
+          this.nonEmpty.await()
       }
     } finally {
       this.lock.unlock()
@@ -61,11 +65,18 @@ class Executor[T](relation: Relation[T]) {
     val execute = new Thread(() => {
       this.lock.lock()
       try {
+        // Schedule the transaction in the first available epoch.
         val deps = this.schedule.filterKeys(relation.related(_, arg))
         val date = if (deps.isEmpty) this.epoch + 1 else deps.values.max + 1
         this.schedule += arg -> date
         scheduled.countDown()
-        this.horizon.getOrElseUpdate(date, this.lock.newCondition()).await()
+
+        // Wait for its epoch.
+        val wait = this.horizon.getOrElseUpdate(date, this.lock.newCondition())
+        this.nonEmpty.signalAll()
+        wait.await()
+
+        // Remove the transaction from the schedule.
         this.schedule -= arg
       } finally {
         this.lock.unlock()
