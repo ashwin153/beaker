@@ -1,7 +1,8 @@
 package beaker.common.concurrent
 
 import beaker.common.util.Relation
-import java.util.concurrent.{CountDownLatch, ExecutorService, Executors, TimeUnit}
+
+import java.util.concurrent.{CountDownLatch, ExecutorService, Executors}
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -84,7 +85,7 @@ class Executor[T](relation: Relation[T]) {
         this.barrier.countDown()
       }
     })
-    
+
     scheduled.await()
     promise.future
   }
