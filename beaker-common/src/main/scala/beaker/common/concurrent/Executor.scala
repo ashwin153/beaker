@@ -1,12 +1,10 @@
 package beaker.common.concurrent
 
 import beaker.common.util.Relation
-
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{CountDownLatch, ExecutorService, Executors, TimeUnit}
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
-import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 /**
@@ -25,6 +23,7 @@ class Executor[T](relation: Relation[T]) {
   private[this] val lock: ReentrantLock = new ReentrantLock
   private[this] var barrier: CountDownLatch = new CountDownLatch(0)
   private[this] val nonEmpty: Condition = this.lock.newCondition()
+  private[this] val underlying: ExecutorService = Executors.newCachedThreadPool()
 
   private[this] val clock = Task.indefinitely {
     this.lock.lock()
@@ -63,31 +62,29 @@ class Executor[T](relation: Relation[T]) {
     val scheduled = new CountDownLatch(1)
     val promise = Promise[U]()
 
-    Future {
-      blocking {
-        this.lock.lock()
-        try {
-          // Schedule the transaction in the first available epoch.
-          val deps = this.schedule.filterKeys(relation.related(_, arg))
-          val date = if (deps.isEmpty) this.epoch + 1 else deps.values.max + 1
-          this.schedule += arg -> date
-          scheduled.countDown()
+    this.underlying.submit(() => {
+      this.lock.lock()
+      try {
+        // Schedule the transaction in the first available epoch.
+        val deps = this.schedule.filterKeys(relation.related(_, arg))
+        val date = if (deps.isEmpty) this.epoch + 1 else deps.values.max + 1
+        this.schedule += arg -> date
+        scheduled.countDown()
 
-          // Wait for its epoch.
-          val wait = this.horizon.getOrElseUpdate(date, this.lock.newCondition())
-          this.nonEmpty.signalAll()
-          wait.await()
+        // Wait for its epoch.
+        val wait = this.horizon.getOrElseUpdate(date, this.lock.newCondition())
+        this.nonEmpty.signalAll()
+        wait.await()
 
-          // Remove the transaction from the schedule.
-          this.schedule -= arg
-        } finally {
-          this.lock.unlock()
-          promise.complete(command(arg))
-          this.barrier.countDown()
-        }
+        // Remove the transaction from the schedule.
+        this.schedule -= arg
+      } finally {
+        this.lock.unlock()
+        promise.complete(command(arg))
+        this.barrier.countDown()
       }
-    }
-
+    })
+    
     scheduled.await()
     promise.future
   }
