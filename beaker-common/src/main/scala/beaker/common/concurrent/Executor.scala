@@ -1,8 +1,7 @@
 package beaker.common.concurrent
 
 import beaker.common.util.Relation
-
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -28,7 +27,7 @@ class Executor[T](relation: Relation[T]) {
   private[this] val clock = Task.indefinitely {
     this.lock.lock()
     try {
-      this.horizon.get(this.epoch) match {
+      this.horizon.get(this.epoch + 1) match {
         case Some(waiting) if this.lock.getWaitQueueLength(waiting) > 0 =>
           // Wait for all transactions in the current epoch to complete.
           this.barrier = new CountDownLatch(this.lock.getWaitQueueLength(waiting))
