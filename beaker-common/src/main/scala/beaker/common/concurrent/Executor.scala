@@ -2,10 +2,9 @@ package beaker.common.concurrent
 
 import beaker.common.concurrent.Executor.Command
 import beaker.common.util._
+
 import java.util.concurrent._
-import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -15,24 +14,27 @@ import scala.util.Try
  * early as possible.
  *
  * @see https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf
+ * @param schedule Request queue.
+ * @param worker Worker pool.
  * @param relation Command relation.
  */
-case class Executor[T](implicit relation: Relation[T]) {
+class Executor[T](
+  schedule: LinkedBlockingQueue[Command[T]],
+  worker: ExecutorService
+)(
+  implicit relation: Relation[T]
+) {
 
-  //
-  private[this] val queue: LinkedBlockingQueue[Command[T]] = new LinkedBlockingQueue()
-  private[this] val worker: ExecutorService = Executors.newCachedThreadPool()
-
-  //
+  // Concurrently performs as many unrelated commands as possible.
   private[this] val clock: Task = Task.indefinitely {
-    val group = mutable.Buffer(this.queue.take())
-    while (this.queue.peek() != null && !group.exists(cmd => cmd.arg ~ this.queue.peek().arg))
-      group += this.queue.take()
+    val group = mutable.Buffer(this.schedule.take())
+    while (this.schedule.peek() != null && !group.exists(cmd => cmd.arg ~ this.schedule.peek().arg))
+      group += this.schedule.take()
     group.map(cmd => this.worker.submit(cmd.run)).foreach(_.get())
   }
 
   /**
-   *
+   * Shutdowns the clock and the thread pool.
    */
   def close(): Unit = {
     this.clock.cancel()
@@ -44,13 +46,13 @@ case class Executor[T](implicit relation: Relation[T]) {
    * scheduled, so that if a thread submits A before B and A ~ B, then A will be executed
    * before B.
    *
-   * @param arg Command argument.
-   * @param f Command to execute.
+   * @param arg Argument.
+   * @param f Function.
    * @return Future containing result of command execution.
    */
   def submit[U](arg: T)(f: T => Try[U]): Future[U] = {
     val promise = Promise[U]()
-    this.queue.offer(Command(arg, () => promise.complete(f(arg))))
+    this.schedule.offer(Command(arg, () => promise.complete(f(arg))))
     promise.future
   }
 
@@ -59,11 +61,30 @@ case class Executor[T](implicit relation: Relation[T]) {
 object Executor {
 
   /**
+   * An executable command.
    *
-   * @param arg
-   * @param run
-   * @tparam T
+   * @param arg Argument.
+   * @param run Function.
    */
   case class Command[T](arg: T, run: Runnable)
+
+  /**
+   * Constructs an executor over a cached thread pool.
+   *
+   * @param relation Command relation.
+   * @return Executor.
+   */
+  def apply[T]()(implicit relation: Relation[T]): Executor[T] =
+    Executor(Executors.newCachedThreadPool())
+
+  /**
+   * Constructs an executor over the specified worker pool.
+   *
+   * @param worker Worker pool.
+   * @param relation Command relation.
+   * @return Executor.
+   */
+  def apply[T](worker: ExecutorService)(implicit relation: Relation[T]): Executor[T] =
+    new Executor(new LinkedBlockingQueue(), worker)
 
 }
