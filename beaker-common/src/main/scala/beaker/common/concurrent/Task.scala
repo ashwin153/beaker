@@ -78,7 +78,7 @@ object Task {
    * @return Indefinite task.
    */
   def indefinitely[T](body: => T): Task =
-    Task { Try { while (true) { body; Thread.`yield`() } } }
+    Task { Try { while (true) { body } } }
 
   /**
    * Constructs a task that periodically performs the body.
