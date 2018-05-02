@@ -69,6 +69,9 @@ case class Beaker(
     if (this.proposing.keys.exists(_ ~ transaction)) {
       // If the transaction conflicts with a proposed transaction, then return failure.
       Future(Result(false))
+    } else if (this.proposer.acceptors.size <= 1 && this.proposer.learners.size <= 1) {
+      // If there are no other members in the cluster, then apply the transaction immediately.
+      this.archive.commit(transaction) map { _ => Result(true) } recover { case _ => Result(false) }
     } else {
       // Otherwise, asynchronously propose the transaction.
       val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
