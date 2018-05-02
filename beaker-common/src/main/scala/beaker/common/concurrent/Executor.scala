@@ -1,8 +1,7 @@
 package beaker.common.concurrent
 
 import beaker.common.util.Relation
-
-import java.util.concurrent.{CountDownLatch, ExecutorService, Executors}
+import java.util.concurrent.{CountDownLatch, ExecutorService, Executors, Phaser}
 import java.util.concurrent.locks.{Condition, ReentrantLock}
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -22,7 +21,7 @@ class Executor[T](relation: Relation[T]) {
   private[this] val horizon: mutable.Map[Long, Condition] = mutable.Map.empty
   private[this] val schedule: mutable.Map[T, Long] = mutable.Map.empty
   private[this] val lock: ReentrantLock = new ReentrantLock
-  private[this] var barrier: CountDownLatch = new CountDownLatch(0)
+  private[this] val phaser: Phaser = new Phaser(1)
   private[this] val nonEmpty: Condition = this.lock.newCondition()
   private[this] val underlying: ExecutorService = Executors.newCachedThreadPool()
 
@@ -35,19 +34,19 @@ class Executor[T](relation: Relation[T]) {
           this.nonEmpty.await()
         case Some(waiting) =>
           // Wait for all transactions in the current epoch to complete.
-          this.barrier = new CountDownLatch(this.lock.getWaitQueueLength(waiting))
+          this.phaser.bulkRegister(this.lock.getWaitQueueLength(waiting))
           this.epoch += 1
           waiting.signalAll()
       }
     } finally {
       this.lock.unlock()
-      this.barrier.await()
+      this.phaser.arriveAndAwaitAdvance()
     }
   }
 
   def close(): Unit = {
     this.clock.cancel()
-    this.barrier.await()
+    this.phaser.forceTermination()
   }
 
   /**
@@ -82,7 +81,7 @@ class Executor[T](relation: Relation[T]) {
       } finally {
         this.lock.unlock()
         promise.complete(command(arg))
-        this.barrier.countDown()
+        this.phaser.arriveAndDeregister()
       }
     })
 
