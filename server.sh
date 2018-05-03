@@ -6,14 +6,14 @@
 PORT=9090
 OPTS=""
 
-while getopts ":hc:d:o:p:" opt; do
+while getopts ":hc:l:o:p:" opt; do
   case $opt in
     h ) echo "Usage: $0 [option...]                                         " >&2
         echo
         echo "   -h                         Displays this help message.     "
         echo
         echo "   -c                         Path to configuration file.     "
-        echo "   -d                         Path to debug log file.         "
+        echo "   -l                         Path to log4j properties file.  "
         echo "   -o                         Configuration overrides.        "
         echo "   -p                         Port number. (9090)             "
         echo
@@ -22,8 +22,7 @@ while getopts ":hc:d:o:p:" opt; do
     c ) eval cp ${OPTARG} /beaker-server/src/main/resources/application.conf
         trap 'rm /beaker-server/src/main/resources/application.conf' EXIT
         ;;
-    d ) OPTS+=" --jvm-run-jvm-options="\""-Dlog4j.logger.beaker.server=DEBUG, file"\"
-        OPTS+=" --jvm-run-jvm-options="\""-Dlog4j.appender.file.File=${OPTARG}"\"
+    l ) OPTS+=" --jvm-run-jvm-options="\""-Dlog4j.configuration=file:${OPTARG}"\"
         ;;
     o ) OPTS+=" --jvm-run-jvm-options="\""-D${OPTARG}"\"
         ;;
