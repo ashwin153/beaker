@@ -2,7 +2,7 @@ package beaker
 
 import beaker.common.util._
 import beaker.server.protobuf._
-
+import java.util.Collections
 import scala.math.Ordering.Implicits._
 
 package object server {
@@ -28,7 +28,7 @@ package object server {
   implicit val transactionRelation: Relation[Transaction] = (x, y) => {
     val (xr, xw) = (x.depends.keySet, x.changes.keySet)
     val (yr, yw) = (y.depends.keySet, y.changes.keySet)
-    xr.intersect(yw).nonEmpty || yr.intersect(xw).nonEmpty || xw.intersect(yw).nonEmpty
+    !xr.disjoint(yw) || !yr.disjoint(xw) || !xw.disjoint(yw)
   }
 
   // Proposals are partially ordered by their view and by ballot when their transactions conflict.

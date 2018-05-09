@@ -85,6 +85,19 @@ package object util extends Retry {
 
   }
 
+  implicit class SetOps[T](x: Set[T]) {
+
+    /**
+     * Returns whether or not the sets are disjoint.
+     *
+     * @param y A set.
+     * @return Whether or not the sets overlap.
+     */
+    def disjoint(y: Set[T]): Boolean =
+      if (x.size < y.size) x.exists(y.contains) else y.exists(x.contains)
+
+  }
+
   implicit class TryOps[T](x: Try[T]) {
 
     /**
