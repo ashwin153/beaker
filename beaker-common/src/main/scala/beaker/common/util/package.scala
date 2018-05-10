@@ -94,7 +94,7 @@ package object util extends Retry {
      * @return Whether or not the sets overlap.
      */
     def disjoint(y: Set[T]): Boolean =
-      if (x.size < y.size) x.exists(y.contains) else y.exists(x.contains)
+      if (x.size < y.size) !x.exists(y.contains) else !y.exists(x.contains)
 
   }
 
