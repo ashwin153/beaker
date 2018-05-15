@@ -4,13 +4,12 @@ package storage
 import beaker.server
 import beaker.server.protobuf._
 import com.github.benmanes.caffeine.{cache => caffeine}
-
 import pureconfig._
-
 import java.util.concurrent.{ConcurrentSkipListMap, TimeUnit}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.util.Try
+import squants.information.Information
 
 object Local {
 
@@ -112,7 +111,7 @@ object Local {
      * @param expiration Duration after which stale entries are evicted.
      */
     case class Config(
-      capacity: Long,
+      capacity: Information,
       expiration: Duration
     )
 
@@ -135,7 +134,7 @@ object Local {
     def apply(database: server.Database, config: Config): Local.Cache =
       Local.Cache(database, caffeine.Caffeine.newBuilder()
         .weigher((k: Key, r: Revision) => sizeof(k) + sizeof(r))
-        .maximumWeight(config.capacity)
+        .maximumWeight(config.capacity.toBytes.toLong)
         .expireAfterAccess(config.expiration.toMillis, TimeUnit.MILLISECONDS)
         .build[Key, Revision]())
 
