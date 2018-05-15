@@ -127,16 +127,16 @@ case class Beaker(
 
     if (this.learned(proposal) == this.proposer.acceptors.size / 2 + 1) {
       // If the proposal receives a majority of votes, then commit it.
+      this.proposing.removeKeys(proposal.commits.contains).values.foreach(_.finish())
+      this.proposing.removeKeys(t => proposal.commits.exists(_ ~ t)).values.foreach(_.cancel())
+      this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
+      this.configuring.removeKeys(_ < proposal.view).values.foreach(_.cancel())
+
       val commits = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
       commits.foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
       this.prepared --= this.prepared.filter(_ conflicts commits)
       this.accepted --= this.accepted.filter(_ conflicts commits)
-
-      this.proposing.removeKeys(commits.contains).values.foreach(_.finish())
-      this.proposing.removeKeys(t => commits.exists(_ ~ t)).values.foreach(_.cancel())
-      this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
-      this.configuring.removeKeys(_ < proposal.view).values.foreach(_.cancel())
       this.logger.debug(s"${ GREEN }Learned${ RESET }   ${ proposal.commits.hashCode() }")
     }
 
