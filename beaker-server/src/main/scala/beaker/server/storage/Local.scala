@@ -3,13 +3,17 @@ package storage
 
 import beaker.server
 import beaker.server.protobuf._
+
 import com.github.benmanes.caffeine.{cache => caffeine}
 import pureconfig._
+import pureconfig.module.squants._
+
+import squants.information.Information
+
 import java.util.concurrent.{ConcurrentSkipListMap, TimeUnit}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.util.Try
-import squants.information.Information
 
 object Local {
 
