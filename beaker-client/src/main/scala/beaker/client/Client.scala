@@ -32,7 +32,7 @@ class Client(channel: ManagedChannel) {
     val rset = depends ++ (changes.keySet -- depends.keySet).map(k => k -> 0L)
     val wset = changes map { case (k, v) => k -> Revision(rset(k) + 1, v) }
     val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
-    Try(stub.propose(Transaction(rset, wset))).filter(_.successful).map(_ => wset.mapValues(_.version))
+    Try(stub.cas(Transaction(rset, wset))).filter(_.successful).map(_ => wset.mapValues(_.version))
   }
 
   /**
@@ -105,8 +105,8 @@ class Client(channel: ManagedChannel) {
    * @param value Change to apply.
    * @return Updated version.
    */
-  def put(key: Key, value: Value): Try[Version] =
-    put(Map(key -> value)).flatMap(_.get(key).toTry)
+  def put(key: Key, value: Value): Try[Unit] =
+    put(Map(key -> value))
 
   /**
    * Conditionally applies the changes and returns their updated versions.
@@ -114,8 +114,10 @@ class Client(channel: ManagedChannel) {
    * @param changes Changes to apply.
    * @return Updated versions.
    */
-  def put(changes: Map[Key, Value]): Try[Map[Key, Version]] =
-    get(changes.keySet).map(_.mapValues(_.version)).flatMap(cas(_, changes))
+  def put(changes: Map[Key, Value]): Try[Unit] = {
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    Try(stub.put(Values(changes))).filter(_.successful).map(_ => ())
+  }
 
   /**
    * Conditionally applies the changes and returns their updated versions.
@@ -123,8 +125,8 @@ class Client(channel: ManagedChannel) {
    * @param changes Changes to apply.
    * @return Updated versions.
    */
-  def put(changes: util.Map[Key, Value]): Try[util.Map[Key, Version]] =
-    put(changes.asScala).map(_.asJava)
+  def put(changes: util.Map[Key, Value]): Try[Unit] =
+    put(changes.asScala)
 
   /**
    * Attempts to consistently update the network configuration.

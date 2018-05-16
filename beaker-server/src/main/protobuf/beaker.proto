@@ -31,6 +31,17 @@ message Keys {
 }
 
 /**
+ * A collection of values.
+ *
+ * @param entries Values for keys.
+ */
+message Values {
+
+  map<string, string> entries = 1;
+
+}
+
+/**
  * A finite range of keys.
  *
  * @param after Exclusive initial key.
@@ -160,6 +171,16 @@ service Beaker {
   rpc Get(Keys) returns (Revisions);
 
   /**
+   * Unconditionally applies the changes.
+   */
+  rpc Put(Values) returns (Result);
+
+  /**
+   * Conditionally applies the transaction if and only if it depends on the latest versions.
+   */
+  rpc Cas(Transaction) returns (Result);
+
+  /**
    * Returns the latest revisions of every key.
    */
   rpc Scan(stream Range) returns (stream Revisions);
@@ -173,11 +194,6 @@ service Beaker {
    * Attempts to consistently update the network configuration.
    */
   rpc Reconfigure(Configuration) returns (Result);
-
-  /**
-   * Conditionally applies its changes if and only if it depends on the latest versions.
-   */
-  rpc Propose(Transaction) returns (Result);
 
   /**
    * Makes a promise not to accept any proposal that conflicts with the proposal it returns and has
