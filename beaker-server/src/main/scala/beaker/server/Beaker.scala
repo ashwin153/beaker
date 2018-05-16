@@ -22,7 +22,7 @@ import scala.concurrent.{Future, Promise}
 case class Beaker(
   archive: Archive,
   proposer: Proposer,
-  worker: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors() * 2)
+  worker: ExecutorService = Executors.newCachedThreadPool()
 ) extends BeakerGrpc.Beaker with LazyLogging {
 
   private[this] val configuring: mutable.Map[View, Task] = mutable.Map.empty
