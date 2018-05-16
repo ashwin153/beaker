@@ -99,7 +99,7 @@ object Local {
     override def close(): Unit = this.underlying.invalidateAll()
 
     override def fetch(keys: Set[Key]): Try[Map[Key, Revision]] =
-      Try(this.underlying.getAllPresent(keys.asJava).asScala.toMap)
+      Try(keys.map(k => k -> this.underlying.getIfPresent(k)).toMap)
 
     override def update(changes: Map[Key, Revision]): Try[Unit] =
       Try(this.underlying.putAll(changes.asJava))

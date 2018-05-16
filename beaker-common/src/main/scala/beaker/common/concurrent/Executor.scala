@@ -18,7 +18,7 @@ import scala.util.Try
  * @param worker Worker pool.
  * @param relation Command relation.
  */
-class Executor[T](
+case class Executor[T](
   schedule: LinkedBlockingQueue[Command[T]],
   worker: ExecutorService
 )(
@@ -75,7 +75,7 @@ object Executor {
    * @return Executor.
    */
   def apply[T]()(implicit relation: Relation[T]): Executor[T] =
-    Executor(Executors.newCachedThreadPool())
+    Executor(Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors() * 2))
 
   /**
    * Constructs an executor over the specified worker pool.

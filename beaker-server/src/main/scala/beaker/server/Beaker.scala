@@ -107,9 +107,9 @@ case class Beaker(
   override def accept(proposal: Proposal): Future[Result] = synchronized {
     if (!this.prepared.exists(_ |> proposal)) {
       // If it has not promised not to accept the proposal, then it votes for the proposal.
+      this.proposer.learners.broadcastAsync(_.learn(proposal))
       this.accepted --= this.accepted.filter(_ <| proposal)
       this.accepted += proposal
-      this.proposer.learners.broadcastAsync(_.learn(proposal))
       this.logger.debug(s"${ BLUE }Accepted${ RESET }  ${ proposal.commits.hashCode() }")
       Future(Result(true))
     } else {
@@ -122,7 +122,6 @@ case class Beaker(
   override def learn(proposal: Proposal): Future[Void] = synchronized {
     // Vote for the proposal and discard older learned proposals.
     this.logger.debug(s"${ GREEN }Learning${ RESET }  ${ proposal.commits.hashCode() }")
-    this.learned.removeKeys(_ <| proposal)
     this.learned(proposal) = this.learned.getOrElse(proposal, 0) + 1
 
     if (this.learned(proposal) == this.proposer.acceptors.size / 2 + 1) {
@@ -132,14 +131,14 @@ case class Beaker(
       this.configuring.removeKeys(_ == proposal.view).values.foreach(_.finish())
       this.configuring.removeKeys(_ < proposal.view).values.foreach(_.cancel())
 
-      val commits = proposal.commits :+ Transaction(Map.empty, proposal.repairs)
-      commits.foreach(this.archive.commit)
+      (proposal.commits :+ Transaction(Map.empty, proposal.repairs)).foreach(this.archive.commit)
       this.proposer.reconfigure(proposal.view)
-      this.prepared --= this.prepared.filter(_ conflicts commits)
-      this.accepted --= this.accepted.filter(_ conflicts commits)
+      this.prepared --= this.prepared.filter(_ conflicts proposal.commits)
+      this.accepted --= this.accepted.filter(_ conflicts proposal.commits)
       this.logger.debug(s"${ GREEN }Learned${ RESET }   ${ proposal.commits.hashCode() }")
     }
 
+    this.learned.removeKeys(_ <| proposal)
     Future(Void())
   }
 
