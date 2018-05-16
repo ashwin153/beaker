@@ -1,5 +1,6 @@
 package beaker.common.concurrent
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
@@ -9,43 +10,10 @@ import scala.util.Try
  * Tasks are particularly useful for representing computations that run indefinitely until some
  * external condition is satisfied.
  */
-class Task(body: => Try[Unit]) {
+class Task(body: => Try[Unit]) extends Runnable {
 
-  private val promise: Promise[Unit] = Promise()
-  private val thread: Thread = new Thread(() => {
-    try {
-      val result = body
-      promise.synchronized {
-        if (!promise.isCompleted)
-          promise.complete(result)
-      }
-    } catch {
-      case _: InterruptedException =>
-    }
-  })
-
-  // Begin executing the body immediately.
-  this.thread.start()
-
-  /**
-   * Completes the task unsuccessfully.
-   */
-  def cancel(): Unit = this.promise.synchronized {
-    if (!this.promise.isCompleted) {
-      this.thread.interrupt()
-      this.promise.failure(Task.Cancelled)
-    }
-  }
-
-  /**
-   * Completes the task successfully.
-   */
-  def finish(): Unit = this.promise.synchronized {
-    if (!this.promise.isCompleted) {
-      this.thread.interrupt()
-      this.promise.success(())
-    }
-  }
+  private[this] val promise: Promise[Unit] = Promise()
+  private[this] val running: AtomicReference[Thread] = new AtomicReference[Thread]()
 
   /**
    * Returns a future that completes when the task terminates.
@@ -53,6 +21,40 @@ class Task(body: => Try[Unit]) {
    * @return Computation handle.
    */
   def future: Future[Unit] = this.promise.future
+
+  /**
+   * Completes the task unsuccessfully.
+   */
+  def cancel(): Unit = synchronized {
+    if (!this.promise.isCompleted) {
+      val thread = this.running.get()
+      if (thread != null) thread.interrupt()
+      this.promise.failure(Task.Cancelled)
+    }
+  }
+
+  /**
+   * Completes the task successfully.
+   */
+  def finish(): Unit = synchronized {
+    if (!this.promise.isCompleted) {
+      val thread = this.running.get()
+      if (thread != null) thread.interrupt()
+      this.promise.success(())
+    }
+  }
+
+  override def run(): Unit = {
+    //
+    this.running.set(Thread.currentThread())
+    val result = body
+
+    //
+    synchronized {
+      this.running.set(null)
+      if (!this.promise.isCompleted) this.promise.complete(result)
+    }
+  }
 
 }
 

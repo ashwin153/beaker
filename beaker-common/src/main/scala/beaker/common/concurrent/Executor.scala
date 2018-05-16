@@ -26,18 +26,26 @@ case class Executor[T](
 ) {
 
   // Concurrently performs as many unrelated commands as possible.
-  private[this] val clock: Task = Task.indefinitely {
-    val group = mutable.Buffer(this.schedule.take())
-    while (this.schedule.peek() != null && !group.exists(cmd => cmd.arg ~ this.schedule.peek().arg))
-      group += this.schedule.take()
-    group.map(cmd => this.worker.submit(cmd.run)).foreach(_.get())
+  private[this] val scheduler: Runnable = () => {
+    while (!Thread.currentThread().isInterrupted) {
+      val group = mutable.Buffer(schedule.take())
+      while (schedule.peek() != null && !group.exists(cmd => cmd.arg ~ schedule.peek().arg))
+        group += schedule.take()
+      group.map(cmd => worker.submit(cmd.run)).foreach(_.get())
+    }
   }
+
+  // Run the scheduler in a maximum priority thread.
+  private[this] val thread: Thread = new Thread(this.scheduler, "beaker-executor-clock")
+  this.thread.setDaemon(true)
+  this.thread.setPriority(Thread.MAX_PRIORITY)
+  this.thread.start()
 
   /**
    * Shutdowns the clock and the thread pool.
    */
   def close(): Unit = {
-    this.clock.cancel()
+    this.thread.interrupt()
     this.worker.shutdown()
   }
 

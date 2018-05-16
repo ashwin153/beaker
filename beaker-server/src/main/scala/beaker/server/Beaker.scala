@@ -3,16 +3,15 @@ package beaker.server
 import beaker.common.util._
 import beaker.common.concurrent._
 import beaker.server.protobuf._
-
 import com.typesafe.scalalogging.LazyLogging
 import io.grpc.stub.StreamObserver
-
+import java.util.concurrent.{ExecutorService, Executors}
 import scala.collection.mutable
 import scala.Console._
 import scala.language.postfixOps
 import scala.math.Ordering.Implicits._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 
 /**
  * A distributed, transactional key-value store.
@@ -22,7 +21,8 @@ import scala.concurrent.Future
  */
 case class Beaker(
   archive: Archive,
-  proposer: Proposer
+  proposer: Proposer,
+  worker: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors() * 2)
 ) extends BeakerGrpc.Beaker with LazyLogging {
 
   private[this] val configuring: mutable.Map[View, Task] = mutable.Map.empty
@@ -61,6 +61,7 @@ case class Beaker(
       val proposal = Proposal(view.ballot, Seq.empty, Map.empty, view)
       val task = Task(this.proposer.consensus(proposal))
       this.configuring += view -> task
+      this.worker.submit(task)
       task.future map { _ => Result(true) } recover { case _ => Result(false) }
     }
   }
@@ -77,6 +78,7 @@ case class Beaker(
       val proposal = Proposal(this.proposer.next(), Seq(transaction), Map.empty, this.proposer.view)
       val task = Task(this.proposer.consensus(proposal))
       this.proposing += transaction -> task
+      this.worker.submit(task)
       task.future map { _ => Result(true) } recover { case _ => Result(false) }
     }
   }
