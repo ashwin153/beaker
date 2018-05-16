@@ -37,7 +37,6 @@ case class Executor[T](
 
   // Run the scheduler in a maximum priority thread.
   private[this] val thread: Thread = new Thread(this.scheduler, "beaker-executor-clock")
-  this.thread.setDaemon(true)
   this.thread.setPriority(Thread.MAX_PRIORITY)
   this.thread.start()
 
