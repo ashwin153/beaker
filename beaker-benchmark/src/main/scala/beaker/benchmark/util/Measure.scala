@@ -23,8 +23,6 @@ object Measure {
    * @param f Function to test.
    * @return Throughput per second.
    */
-  def throughput[T](f: => T): Double = {
-    (1 second) / latency(f)
-  }
+  def throughput[T](f: => T): Double = (1 second) / latency(f)
 
 }

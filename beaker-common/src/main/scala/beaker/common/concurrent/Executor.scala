@@ -5,7 +5,7 @@ import beaker.common.util._
 
 import java.util.concurrent._
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Promise
 import scala.util.Try
 
 /**
@@ -28,10 +28,16 @@ case class Executor[T](
   // Concurrently performs as many unrelated commands as possible.
   private[this] val scheduler: Runnable = () => {
     while (!Thread.currentThread().isInterrupted) {
-      val group = mutable.Buffer(schedule.take())
-      while (schedule.peek() != null && !group.exists(cmd => cmd.arg ~ schedule.peek().arg))
-        group += schedule.take()
-      group.map(cmd => worker.submit(cmd.run)).foreach(_.get())
+      val group = mutable.Buffer[T]()
+      val tasks = mutable.Buffer[Future[_]]()
+
+      do {
+        val cmd = this.schedule.take()
+        tasks += this.worker.submit(cmd.run)
+        group += cmd.arg
+      } while (this.schedule.peek() != null && !group.exists(t => t ~ this.schedule.peek().arg))
+
+      tasks.foreach(_.get())
     }
   }
 
