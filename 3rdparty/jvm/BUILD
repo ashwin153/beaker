@@ -16,7 +16,7 @@ jar_library(name='grpc-netty', jars=[
     jar(org='io.grpc', name='grpc-netty', rev='1.12.0'),
     jar(org='io.netty', name='netty-handler', rev='4.1.25.Final'),
     jar(org='io.netty', name='netty-tcnative-boringssl-static', rev='2.0.7.Final'),
-    jar(org='io.netty', name='netty-transport-native-epoll', rev='4.1.25.Final'),
+    jar(org='io.netty', name='netty-transport-native-epoll', rev='4.1.25.Final', classifier='linux-x86_64'),
 ])
 
 # Jedis
