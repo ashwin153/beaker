@@ -50,7 +50,6 @@ jar_library(name='scala-logging', jars=[
     jar(org='com.typesafe.scala-logging', name='scala-logging_2.12', rev='3.9.0')
 ])
 
-
 # ScalaPB Runtime
 jar_library(name='scalapb-runtime', jars=[
     jar(org='com.thesamet.scalapb', name='scalapb-runtime_2.12', rev='0.7.4')

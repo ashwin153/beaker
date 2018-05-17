@@ -28,16 +28,15 @@ case class Executor[T](
   // Concurrently performs as many unrelated commands as possible.
   private[this] val scheduler: Runnable = () => {
     while (!Thread.currentThread().isInterrupted) {
-      val group = mutable.Buffer[T]()
-      val tasks = mutable.Buffer[java.util.concurrent.Future[_]]()
+      val group = mutable.Buffer[(T, java.util.concurrent.Future[_])]()
 
       do {
         val cmd = this.schedule.take()
-        tasks += this.worker.submit(cmd.run)
-        group += cmd.arg
-      } while (this.schedule.peek() != null && !group.exists(t => t ~ this.schedule.peek().arg))
+        group += cmd.arg -> this.worker.submit(cmd.run)
+        group filterNot { case (_, t) => t.isDone }
+      } while (this.schedule.peek() != null && !(group exists { case (c, _) => c ~ this.schedule.peek().arg }))
 
-      tasks.foreach(_.get())
+      group foreach { case (_, t) => t.get() }
     }
   }
 
