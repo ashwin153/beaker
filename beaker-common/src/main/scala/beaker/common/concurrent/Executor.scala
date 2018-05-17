@@ -5,7 +5,7 @@ import beaker.common.util._
 
 import java.util.concurrent._
 import scala.collection.mutable
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 /**
@@ -29,7 +29,7 @@ case class Executor[T](
   private[this] val scheduler: Runnable = () => {
     while (!Thread.currentThread().isInterrupted) {
       val group = mutable.Buffer[T]()
-      val tasks = mutable.Buffer[Future[_]]()
+      val tasks = mutable.Buffer[java.util.concurrent.Future[_]]()
 
       do {
         val cmd = this.schedule.take()
