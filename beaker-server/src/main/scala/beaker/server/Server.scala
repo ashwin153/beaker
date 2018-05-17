@@ -4,10 +4,9 @@ import beaker.client._
 import beaker.common.util._
 import beaker.server.protobuf._
 import beaker.server.storage._
-
 import io.grpc.netty.NettyServerBuilder
+import io.netty.channel.epoll.{EpollEventLoopGroup, EpollServerSocketChannel}
 import pureconfig._
-
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
 import scala.util.Success
@@ -28,6 +27,9 @@ case class Server(
   private[this] val underlying = NettyServerBuilder
     .forPort(this.address.port)
     .addService(BeakerGrpc.bindService(this.beaker, global))
+    .bossEventLoopGroup(new EpollEventLoopGroup())
+    .workerEventLoopGroup(new EpollEventLoopGroup())
+    .channelType(classOf[EpollServerSocketChannel])
     .build()
 
   /**
