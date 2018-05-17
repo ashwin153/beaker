@@ -2,7 +2,7 @@ package beaker
 
 import beaker.common.util._
 import beaker.server.protobuf._
-import java.util.Collections
+
 import scala.math.Ordering.Implicits._
 
 package object server {

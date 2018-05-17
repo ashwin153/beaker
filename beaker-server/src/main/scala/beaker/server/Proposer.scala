@@ -144,9 +144,10 @@ case class Proposer(
         } flatMap { updated =>
           // Asynchronously send the updated proposal to a quorum of beakers and retry.
           this.logger.debug(s"${ BLUE }Accepting${ RESET } ${ updated.commits.hashCode() }")
-          this.acceptors.broadcastAsync(_.accept(updated))
-          Thread.sleep(this.backoff.toMillis)
-          consensus(proposal.copy(ballot = after(proposal.ballot)))
+          this.acceptors.quorum(_.accept(updated)) recoverWith { case _ =>
+            Thread.sleep(this.backoff.toMillis)
+            consensus(proposal.copy(ballot = after(proposal.ballot)))
+          }
         }
       }
     }

@@ -201,16 +201,9 @@ class Client(channel: ManagedChannel) {
    * @param proposal Proposal to vote for.
    * @return Whether or not a vote was cast.
    */
-  private[beaker] def accept(proposal: Proposal): Future[Unit] = {
-    val fork = Context.current().fork()
-    val prev = fork.attach()
-    val stub = BeakerGrpc.stub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
-
-    try {
-        stub.accept(proposal).filter(_.successful)
-    } finally {
-      fork.detach(prev)
-    }
+  private[beaker] def accept(proposal: Proposal): Try[Unit] = {
+    val stub = BeakerGrpc.blockingStub(this.channel).withDeadlineAfter(1, TimeUnit.SECONDS)
+    Try(stub.accept(proposal)).filter(_.successful)
   }
 
   /**

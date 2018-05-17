@@ -3,8 +3,10 @@ package beaker.server
 import beaker.common.util._
 import beaker.common.concurrent._
 import beaker.server.protobuf._
+
 import com.typesafe.scalalogging.LazyLogging
 import io.grpc.stub.StreamObserver
+
 import java.util.concurrent.{ExecutorService, Executors}
 import scala.collection.mutable
 import scala.Console._
