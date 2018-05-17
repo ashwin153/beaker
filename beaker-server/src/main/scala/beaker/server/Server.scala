@@ -31,7 +31,7 @@ case class Server(
     .build()
 
   /**
-   * Asynchronously serves the beaker.
+   * Synchronously serves the beaker.
    */
   def serve(): Unit = {
     this.underlying.start()
@@ -69,6 +69,8 @@ case class Server(
         // Terminate the connection to the seed.
         remote.close()
     }
+
+    this.underlying.awaitTermination()
   }
 
   /**
@@ -161,8 +163,8 @@ object Server {
    */
   def main(args: Array[String]): Unit = {
     val instance = Server()
-    instance.serve()
     sys.addShutdownHook(instance.close())
+    instance.serve()
   }
 
 }
